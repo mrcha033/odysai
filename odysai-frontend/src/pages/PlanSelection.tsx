@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Check, Star, ArrowRight } from 'lucide-react';
 import { api } from '../api';
 import { PlanPackage } from '../types';
 
@@ -42,59 +44,113 @@ export default function PlanSelection() {
   };
 
   if (loading) {
-    return <div className="page"><div className="loading">AI가 여행 계획을 생성하는 중...</div></div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
+        <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+        <p className="text-lg font-medium text-slate-600">AI is crafting your perfect itinerary...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="page">
-      <h2>AI 추천 여행 계획</h2>
-      <p style={{ marginBottom: '2rem', color: '#666' }}>
-        그룹의 선호도를 반영한 3가지 여행 스타일을 준비했어요!
-      </p>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="space-y-8"
+    >
+      <div className="text-center space-y-2">
+        <h2 className="text-3xl font-bold text-slate-800">Choose Your Journey</h2>
+        <p className="text-slate-500">We've curated 3 unique plans based on your group's preferences.</p>
+      </div>
 
-      <div className="plan-packages">
-        {packages.map(pkg => (
-          <div
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {packages.map((pkg, index) => (
+          <motion.div
             key={pkg.id}
-            className={`plan-card ${selectedPackage?.id === pkg.id ? 'selected' : ''}`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
             onClick={() => handleSelectPackage(pkg)}
+            className={`cursor-pointer relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${selectedPackage?.id === pkg.id
+              ? 'border-primary-500 bg-primary-50/50 shadow-xl shadow-primary-500/20 scale-105 z-10'
+              : 'border-slate-200 bg-white hover:border-primary-300 hover:shadow-lg'
+              }`}
           >
-            <h3>{pkg.name}</h3>
-            <p>{pkg.description}</p>
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-              {pkg.themeEmphasis.map(theme => (
-                <span key={theme} className="status-badge status-done">
-                  {theme}
-                </span>
-              ))}
-            </div>
+            {selectedPackage?.id === pkg.id && (
+              <div className="absolute top-4 right-4 bg-primary-500 text-white p-1 rounded-full">
+                <Check size={16} strokeWidth={3} />
+              </div>
+            )}
 
-            {pkg.days.map(day => (
-              <div key={day.day} className="day-plan">
-                <h4>Day {day.day} - {day.date}</h4>
-                {day.slots.map(slot => (
-                  <div key={slot.id} className="activity-slot">
-                    <div className="activity-time">{slot.time} ({slot.duration}분)</div>
-                    <div className="activity-title">{slot.title}</div>
-                    <div className="activity-description">{slot.description}</div>
+            <div className="p-6 space-y-4">
+              <div>
+                <h3 className="text-xl font-bold text-slate-800 mb-2">{pkg.name}</h3>
+                <p className="text-sm text-slate-500 line-clamp-2">{pkg.description}</p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {pkg.themeEmphasis.map(theme => (
+                  <span key={theme} className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 flex items-center gap-1">
+                    <Star size={10} className="text-yellow-400 fill-yellow-400" />
+                    {theme}
+                  </span>
+                ))}
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-slate-100">
+                {pkg.days.map(day => (
+                  <div key={day.day} className="space-y-2">
+                    <h4 className="text-sm font-semibold text-primary-700">Day {day.day}</h4>
+                    <div className="space-y-2 pl-3 border-l-2 border-primary-100">
+                      {day.slots.slice(0, 3).map(slot => (
+                        <div key={slot.id} className="text-xs text-slate-600 flex items-start gap-2">
+                          <span className="font-medium min-w-[40px]">{slot.time}</span>
+                          <span className="truncate">{slot.title}</span>
+                        </div>
+                      ))}
+                      {day.slots.length > 3 && (
+                        <div className="text-xs text-slate-400 pl-12">+ {day.slots.length - 3} more activities</div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
-            ))}
-          </div>
+            </div>
+          </motion.div>
         ))}
       </div>
 
-      {selectedPackage && (
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-          <button onClick={handleBackToLobby} className="btn btn-secondary">
-            로비로 돌아가기
-          </button>
-          <button onClick={handleStartTrip} className="btn btn-primary">
-            이 계획으로 확정하기
-          </button>
-        </div>
-      )}
-    </div>
+      <AnimatePresence>
+        {selectedPackage && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-8 left-0 right-0 px-4 flex justify-center z-50 pointer-events-none"
+          >
+            <div className="bg-white/90 backdrop-blur-md border border-slate-200 shadow-2xl rounded-2xl p-4 flex items-center gap-4 pointer-events-auto max-w-lg w-full">
+              <div className="flex-1">
+                <div className="text-sm font-medium text-slate-500">Selected Plan</div>
+                <div className="font-bold text-slate-800">{selectedPackage.name}</div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleBackToLobby}
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleStartTrip}
+                  className="px-6 py-2 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 shadow-lg shadow-primary-500/30 transition-all flex items-center gap-2"
+                >
+                  Start Trip <ArrowRight size={18} />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
