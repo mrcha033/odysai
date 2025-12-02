@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { withCors } from '../../../_lib/handler';
-import { store } from '../../../_lib/store';
+import { store } from '../../../_lib/kvStore';
 import { n8nService } from '../../../_lib/n8nService';
 import { aiService } from '../../../_lib/aiService';
 import { PlanPackage } from '../../../_lib/types';
@@ -18,12 +18,12 @@ async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (method === 'POST') {
     // Generate initial AI plans
-    const room = store.getRoom(roomId as string);
+    const room = await store.getRoom(roomId as string);
     if (!room) {
       return res.status(404).json({ error: 'Room not found' });
     }
 
-    const members = store.getRoomMembers(roomId as string);
+    const members = await store.getRoomMembers(roomId as string);
     const membersWithSurveys = members.filter(m => m.survey);
 
     if (membersWithSurveys.length === 0) {
@@ -71,7 +71,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
         );
       }
 
-      store.setPlanPackages(roomId as string, packages);
+      await store.setPlanPackages(roomId as string, packages);
       return res.status(200).json(packages);
     } catch (error) {
       console.error('Failed to generate plans:', error);

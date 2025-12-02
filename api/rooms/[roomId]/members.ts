@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { v4 as uuidv4 } from 'uuid';
 import { withCors } from '../../_lib/handler';
-import { store } from '../../_lib/store';
+import { store } from '../../_lib/kvStore';
 import { Member } from '../../_lib/types';
 
 async function handler(req: VercelRequest, res: VercelResponse) {
@@ -12,7 +12,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     // Join room as a member
     const { nickname } = req.body;
 
-    const room = store.getRoom(roomId as string);
+    const room = await store.getRoom(roomId as string);
     if (!room) {
       return res.status(404).json({ error: 'Room not found' });
     }
@@ -25,7 +25,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       isReady: false,
     };
 
-    store.addMember(member);
+    await store.addMember(member);
     return res.status(200).json(member);
   }
 

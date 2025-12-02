@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { withCors } from '../_lib/handler';
-import { store } from '../_lib/store';
+import { store } from '../_lib/kvStore';
 import { RoomStatus } from '../_lib/types';
 
 async function handler(req: VercelRequest, res: VercelResponse) {
@@ -9,16 +9,16 @@ async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (method === 'GET') {
     // Get room status
-    const room = store.getRoom(roomId as string);
+    const room = await store.getRoom(roomId as string);
 
     if (!room) {
       return res.status(404).json({ error: 'Room not found' });
     }
 
-    const members = store.getRoomMembers(roomId as string);
+    const members = await store.getRoomMembers(roomId as string);
     const allReady = members.length > 0 && members.every(m => m.isReady);
-    const planPackages = store.getPlanPackages(roomId as string);
-    const trip = store.getTripByRoom(roomId as string);
+    const planPackages = await store.getPlanPackages(roomId as string);
+    const trip = await store.getTripByRoom(roomId as string);
 
     const status: RoomStatus = {
       room,

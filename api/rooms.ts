@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { v4 as uuidv4 } from 'uuid';
 import { withCors } from './_lib/handler';
-import { store } from './_lib/store';
+import { store } from './_lib/kvStore';
 import { Room } from './_lib/types';
 
 async function handler(req: VercelRequest, res: VercelResponse) {
@@ -20,7 +20,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       createdAt: new Date().toISOString(),
     };
 
-    store.createRoom(room);
+    await store.createRoom(room);
     return res.status(200).json(room);
   }
 

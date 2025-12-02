@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { v4 as uuidv4 } from 'uuid';
 import { withCors } from '../../../_lib/handler';
-import { store } from '../../../_lib/store';
+import { store } from '../../../_lib/kvStore';
 
 async function handler(req: VercelRequest, res: VercelResponse) {
   const { roomId } = req.query;
@@ -11,8 +11,8 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     // Start trip (when all ready)
     const { planId } = req.body;
 
-    const room = store.getRoom(roomId as string);
-    const packages = store.getPlanPackages(roomId as string);
+    const room = await store.getRoom(roomId as string);
+    const packages = await store.getPlanPackages(roomId as string);
 
     if (!room || !packages) {
       return res.status(404).json({ error: 'Room or plans not found' });
@@ -23,12 +23,12 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: 'Plan not found' });
     }
 
-    const members = store.getRoomMembers(roomId as string);
+    const members = await store.getRoomMembers(roomId as string);
     if (!members.every(m => m.isReady)) {
       return res.status(400).json({ error: 'Not all members are ready' });
     }
 
-    const trip = store.createTrip({
+    const trip = await store.createTrip({
       id: uuidv4(),
       roomId: roomId as string,
       plan,

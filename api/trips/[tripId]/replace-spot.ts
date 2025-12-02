@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { withCors } from '../../_lib/handler';
-import { store } from '../../_lib/store';
+import { store } from '../../_lib/kvStore';
 import { n8nService } from '../../_lib/n8nService';
 import { aiService } from '../../_lib/aiService';
 
@@ -27,7 +27,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     // Replace a spot in the trip
     const { slotId, reason, day } = req.body;
 
-    const trip = Array.from((store as any).trips.values()).find((t: any) => t.id === tripId);
+    const trip = await store.getTrip(tripId as string);
     if (!trip) {
       return res.status(404).json({ error: 'Trip not found' });
     }

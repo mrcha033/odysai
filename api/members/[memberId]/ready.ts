@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { withCors } from '../../_lib/handler';
-import { store } from '../../_lib/store';
+import { store } from '../../_lib/kvStore';
 
 async function handler(req: VercelRequest, res: VercelResponse) {
   const { memberId } = req.query;
@@ -10,7 +10,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     // Update member ready status
     const { isReady } = req.body;
 
-    const updated = store.updateMember(memberId as string, { isReady });
+    const updated = await store.updateMember(memberId as string, { isReady });
 
     if (!updated) {
       return res.status(404).json({ error: 'Member not found' });

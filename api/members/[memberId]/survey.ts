@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { withCors } from '../../_lib/handler';
-import { store } from '../../_lib/store';
+import { store } from '../../_lib/kvStore';
 import { Survey } from '../../_lib/types';
 
 async function handler(req: VercelRequest, res: VercelResponse) {
@@ -11,12 +11,12 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     // Submit survey
     const survey: Survey = req.body;
 
-    const member = store.getMember(memberId as string);
+    const member = await store.getMember(memberId as string);
     if (!member) {
       return res.status(404).json({ error: 'Member not found' });
     }
 
-    const updated = store.updateMember(memberId as string, {
+    const updated = await store.updateMember(memberId as string, {
       survey,
       surveyCompleted: true,
     });
