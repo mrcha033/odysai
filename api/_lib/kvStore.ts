@@ -1,36 +1,41 @@
-import { kv } from '@vercel/kv';
+import Redis from 'ioredis';
 import { Room, Member, PlanPackage, Trip } from './types';
+
+// Create Redis client from REDIS_URL or KV_URL
+const redis = new Redis(process.env.REDIS_URL || process.env.KV_URL || '');
 
 class KVDataStore {
   // Rooms
   async createRoom(room: Room): Promise<Room> {
-    await kv.set(`room:${room.id}`, room);
+    await redis.set(`room:${room.id}`, JSON.stringify(room));
     return room;
   }
 
   async getRoom(id: string): Promise<Room | null> {
-    return await kv.get<Room>(`room:${id}`);
+    const data = await redis.get(`room:${id}`);
+    return data ? JSON.parse(data) : null;
   }
 
   // Members
   async addMember(member: Member): Promise<Member> {
-    await kv.set(`member:${member.id}`, member);
+    await redis.set(`member:${member.id}`, JSON.stringify(member));
     // Add to room's member list
-    await kv.sadd(`room:${member.roomId}:members`, member.id);
+    await redis.sadd(`room:${member.roomId}:members`, member.id);
     return member;
   }
 
   async getMember(id: string): Promise<Member | null> {
-    return await kv.get<Member>(`member:${id}`);
+    const data = await redis.get(`member:${id}`);
+    return data ? JSON.parse(data) : null;
   }
 
   async getRoomMembers(roomId: string): Promise<Member[]> {
-    const memberIds = await kv.smembers(`room:${roomId}:members`);
+    const memberIds = await redis.smembers(`room:${roomId}:members`);
     const members: Member[] = [];
 
     for (const memberId of memberIds) {
-      const member = await kv.get<Member>(`member:${memberId}`);
-      if (member) members.push(member);
+      const data = await redis.get(`member:${memberId}`);
+      if (data) members.push(JSON.parse(data));
     }
 
     return members;
@@ -41,34 +46,37 @@ class KVDataStore {
     if (!member) return null;
 
     const updated = { ...member, ...updates };
-    await kv.set(`member:${id}`, updated);
+    await redis.set(`member:${id}`, JSON.stringify(updated));
     return updated;
   }
 
   // Plan Packages
   async setPlanPackages(roomId: string, packages: PlanPackage[]): Promise<void> {
-    await kv.set(`room:${roomId}:plans`, packages);
+    await redis.set(`room:${roomId}:plans`, JSON.stringify(packages));
   }
 
   async getPlanPackages(roomId: string): Promise<PlanPackage[] | null> {
-    return await kv.get<PlanPackage[]>(`room:${roomId}:plans`);
+    const data = await redis.get(`room:${roomId}:plans`);
+    return data ? JSON.parse(data) : null;
   }
 
   // Trips
   async createTrip(trip: Trip): Promise<Trip> {
-    await kv.set(`trip:${trip.id}`, trip);
-    await kv.set(`room:${trip.roomId}:trip`, trip.id);
+    await redis.set(`trip:${trip.id}`, JSON.stringify(trip));
+    await redis.set(`room:${trip.roomId}:trip`, trip.id);
     return trip;
   }
 
   async getTripByRoom(roomId: string): Promise<Trip | null> {
-    const tripId = await kv.get<string>(`room:${roomId}:trip`);
+    const tripId = await redis.get(`room:${roomId}:trip`);
     if (!tripId) return null;
-    return await kv.get<Trip>(`trip:${tripId}`);
+    const data = await redis.get(`trip:${tripId}`);
+    return data ? JSON.parse(data) : null;
   }
 
   async getTrip(id: string): Promise<Trip | null> {
-    return await kv.get<Trip>(`trip:${id}`);
+    const data = await redis.get(`trip:${id}`);
+    return data ? JSON.parse(data) : null;
   }
 
   async updateTrip(id: string, updates: Partial<Trip>): Promise<Trip | null> {
@@ -76,7 +84,7 @@ class KVDataStore {
     if (!trip) return null;
 
     const updated = { ...trip, ...updates };
-    await kv.set(`trip:${id}`, updated);
+    await redis.set(`trip:${id}`, JSON.stringify(updated));
     return updated;
   }
 }
