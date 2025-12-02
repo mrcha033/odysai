@@ -7,7 +7,7 @@ export const corsHeaders = {
   'Access-Control-Allow-Headers': 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version',
 };
 
-export function withCors(handler: (req: VercelRequest, res: VercelResponse) => Promise<void> | void) {
+export function withCors(handler: (req: VercelRequest, res: VercelResponse) => Promise<any> | any) {
   return async (req: VercelRequest, res: VercelResponse) => {
     // Handle preflight
     if (req.method === 'OPTIONS') {

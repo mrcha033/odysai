@@ -24,8 +24,8 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       room,
       members,
       allReady,
-      planPackages,
-      trip,
+      planPackages: planPackages || undefined,
+      trip: trip || undefined,
     };
 
     return res.status(200).json(status);
