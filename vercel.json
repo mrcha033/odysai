@@ -2,5 +2,11 @@
   "buildCommand": "cd odysai-frontend && npm install && npm run build",
   "outputDirectory": "odysai-frontend/dist",
   "installCommand": "npm install --prefix odysai-frontend && npm install",
-  "framework": null
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
 }
