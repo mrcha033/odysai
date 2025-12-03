@@ -6,6 +6,7 @@ import RoomLobby from './pages/RoomLobby';
 import Survey from './pages/Survey';
 import PlanSelection from './pages/PlanSelection';
 import TripLobby from './pages/TripLobby';
+import TripReport from './pages/TripReport';
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -26,6 +27,7 @@ function AnimatedRoutes() {
           <Route path="/room/:roomId/survey/:memberId" element={<Survey />} />
           <Route path="/room/:roomId/plans" element={<PlanSelection />} />
           <Route path="/trip/:tripId" element={<TripLobby />} />
+          <Route path="/trip/:tripId/report" element={<TripReport />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </motion.div>

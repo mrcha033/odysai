@@ -168,6 +168,22 @@ export default function TripLobby() {
         ))}
       </div>
 
+      <div className="flex justify-center pt-8 pb-12">
+        <button
+          onClick={async () => {
+            if (!trip) return;
+            if (window.confirm('Are you sure you want to complete this trip?')) {
+              await api.completeTrip(trip.id);
+              // Navigate to report page
+              window.location.href = `/trip/${trip.id}/report`;
+            }
+          }}
+          className="btn btn-primary px-8 py-3 text-lg shadow-lg shadow-primary-500/30 hover:shadow-primary-500/50 transform hover:-translate-y-1 transition-all"
+        >
+          Complete Trip 🎉
+        </button>
+      </div>
+
       <AnimatePresence>
         {showReplaceModal && (
           <motion.div

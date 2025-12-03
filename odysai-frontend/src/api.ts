@@ -89,4 +89,16 @@ export const api = {
     });
     return res.json();
   },
+
+  async completeTrip(_tripId: string): Promise<void> {
+    // In a real app, this would notify the backend.
+    // For now, we'll just return success to allow the UI to proceed.
+    // If there was a backend endpoint:
+    /*
+    await fetch(`${API_BASE}/trips/${tripId}/complete`, {
+      method: 'POST',
+    });
+    */
+    return Promise.resolve();
+  },
 };
