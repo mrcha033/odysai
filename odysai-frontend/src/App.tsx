@@ -63,7 +63,7 @@ function App() {
         </main>
 
         <footer className="py-8 text-center text-slate-400 text-sm">
-          <p>© 2024 Ody'sai. All rights reserved.</p>
+          <p>© 2025 Ody'sai. All rights reserved.</p>
         </footer>
       </div>
     </BrowserRouter>
