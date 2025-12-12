@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart, ThumbsDown, DollarSign, AlertTriangle, Clock, Moon, Camera } from 'lucide-react';
+import { Heart, ThumbsDown, DollarSign, AlertTriangle, Clock, Camera } from 'lucide-react';
 import { api } from '../api';
 import { Survey as SurveyType } from '../types';
 
@@ -14,7 +14,6 @@ export default function Survey() {
   const [budgetLevel, setBudgetLevel] = useState<'low' | 'medium' | 'high'>('medium');
   const [constraints, setConstraints] = useState<string[]>([]);
   const [wakeUpTime, setWakeUpTime] = useState('08:00');
-  const [nightlife, setNightlife] = useState(false);
   const [instagramImportance, setInstagramImportance] = useState(3);
 
   const emotionOptions = ['Healing', 'Excitement', 'Adventure', 'Relaxation', 'Culture', 'Foodie'];
@@ -38,7 +37,6 @@ export default function Survey() {
       budgetLevel,
       constraints,
       wakeUpTime,
-      nightlife,
       instagramImportance,
     };
 
@@ -155,38 +153,17 @@ export default function Survey() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="card p-6 space-y-4">
-            <label className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-              <Clock className="text-blue-500" size={20} />
-              Wake Up Time
-            </label>
-            <input
-              type="time"
-              value={wakeUpTime}
-              onChange={(e) => setWakeUpTime(e.target.value)}
-              className="input text-center text-lg"
-            />
-          </div>
-
-          <div className="card p-6 space-y-4 flex flex-col justify-center">
-            <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                <Moon className="text-purple-500" size={20} />
-                Nightlife
-              </span>
-              <div className={`w-14 h-8 rounded-full p-1 transition-colors ${nightlife ? 'bg-purple-500' : 'bg-slate-200'}`}>
-                <div className={`w-6 h-6 bg-white rounded-full shadow-sm transition-transform ${nightlife ? 'translate-x-6' : ''}`} />
-              </div>
-              <input
-                type="checkbox"
-                checked={nightlife}
-                onChange={(e) => setNightlife(e.target.checked)}
-                className="hidden"
-              />
-            </label>
-            <p className="text-sm text-slate-500">Interested in bars, clubs, or late-night activities?</p>
-          </div>
+        <div className="card p-6 space-y-4">
+          <label className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            <Clock className="text-blue-500" size={20} />
+            Wake Up Time
+          </label>
+          <input
+            type="time"
+            value={wakeUpTime}
+            onChange={(e) => setWakeUpTime(e.target.value)}
+            className="input text-center text-lg"
+          />
         </div>
 
         <div className="card p-6 space-y-6">

@@ -144,14 +144,12 @@ export class AIService {
     const surveySummary = this.summarizeSurveys(surveys);
     const wakeTimes = surveys.map(s => s.wakeUpTime).filter(Boolean);
     const typicalWake = wakeTimes[0] || '08:00';
-    const nightlifeRatio = surveys.filter(s => s.nightlife).length / (surveys.length || 1);
-    const wantsNightlife = nightlifeRatio >= 0.4;
 
     return [
       'You are Ody\'sai, a Korean AI travel planner generating group-friendly itineraries.',
       `Destination: ${room.city}. Dates: ${room.dateRange.start} to ${room.dateRange.end} (${dayCount} days).`,
       `Themes to highlight: ${room.theme.join(', ') || 'balancing rest and exploration'}.`,
-      `Traveler count: ${room.travelerCount}. Typical wake-up: ${typicalWake}. Nightlife interest: ${wantsNightlife ? 'Yes' : 'Low'}.`,
+      `Traveler count: ${room.travelerCount}. Typical wake-up: ${typicalWake}.`,
       `Group emotions: ${surveySummary.emotions.join(', ') || 'balanced'}. Dislikes: ${surveySummary.dislikes.join(', ') || 'none declared'}.`,
       `Constraints: ${surveySummary.constraints.join(', ') || 'none declared'}. Budget: ${surveySummary.budget || 'medium'}. Instagram importance (1-5 avg): ${surveySummary.instagramImportance}.`,
       'Create exactly 3 distinct itinerary packages, varied by vibe (healing, balanced, adventurous, foodie, cultural).',
@@ -484,7 +482,7 @@ export class AIService {
         { id: uuidv4(), time: '08:00', duration: 60, title: '빠른 아침', description: '간단한 아침 식사', location: city, category: 'food', tags: ['아침'] },
         { id: uuidv4(), time: '09:30', duration: 240, title: '액티비티 체험', description: '패러글라이딩, 서핑 등', location: city, category: 'activity', tags: ['모험', '액티비티'] },
         { id: uuidv4(), time: '14:00', duration: 120, title: '로컬 투어', description: '현지 명소 탐방', location: city, category: 'tour', tags: ['관광', '문화'] },
-        { id: uuidv4(), time: '17:00', duration: 180, title: '나이트라이프', description: '바/클럽', location: city, category: 'nightlife', tags: ['밤문화', '파티'] }
+        { id: uuidv4(), time: '17:00', duration: 150, title: '야경 투어', description: '대표 야경 포인트 산책', location: city, category: 'sightseeing', tags: ['야경', '산책'] }
       );
     } else {
       slots.push(

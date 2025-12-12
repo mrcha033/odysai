@@ -210,7 +210,6 @@ App
   budgetLevel: 'low' | 'medium' | 'high'
   constraints: string[]
   wakeUpTime: string
-  nightlife: boolean
   instagramImportance: number
 }
 ```

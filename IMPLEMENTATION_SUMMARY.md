@@ -49,7 +49,7 @@ A fully functional MVP prototype of the Ody'sai AI-assisted group trip planning 
 2. **Smart Surveys**
    - Emotional preference selection (힐링, 설렘, 모험, etc.)
    - Budget level and constraints
-   - Wake-up time and nightlife preferences
+   - Wake-up time preference
    - Instagram/SNS importance slider
 
 3. **AI Plan Generation**
