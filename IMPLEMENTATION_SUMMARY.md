@@ -9,7 +9,7 @@ A fully functional MVP prototype of the Ody'sai AI-assisted group trip planning 
 #### Backend (Node.js + Express + TypeScript)
 - ✅ Complete REST API with 12 endpoints
 - ✅ In-memory data store for rooms, members, surveys, plans, and trips
-- ✅ Mock AI service simulating n8n workflows
+- ✅ Gemini-backed AI service with structured JSON output + graceful fallback
 - ✅ AI plan generation with 3 themed packages
 - ✅ Spot replacement with AI alternatives
 - ✅ TypeScript type safety throughout
@@ -18,7 +18,7 @@ A fully functional MVP prototype of the Ody'sai AI-assisted group trip planning 
 - `odysai-backend/src/index.ts` - Express server with all API routes
 - `odysai-backend/src/types.ts` - Shared TypeScript interfaces
 - `odysai-backend/src/store.ts` - In-memory data management
-- `odysai-backend/src/aiService.ts` - Mock AI service with realistic delays
+- `odysai-backend/src/aiService.ts` - Gemini integration with schema enforcement & fallback templates
 
 #### Frontend (React + TypeScript + Vite)
 - ✅ 5 complete page components
@@ -170,7 +170,7 @@ Both servers are currently running:
 From the PRD, implemented:
 - ✅ [M] Room Creation & Invite
 - ✅ [M] Member Onboarding & Survey
-- ✅ [M] AI Initial Itinerary Packages (via mock n8n)
+- ✅ [M] AI Initial Itinerary Packages (Gemini + fallback templates)
 - ✅ [M] Plan Selection (simplified)
 - ✅ [M] Readiness & Trip Start
 - ✅ [M] Trip Lobby (Read-only Plan + Simple Status)
@@ -180,12 +180,11 @@ Not implemented (out of 1-hour scope):
 - ❌ Drag-and-Drop Itinerary Editor (requires more time)
 - ❌ AI Refinement Loop (can be added easily)
 - ❌ Post-trip Report (planned for later)
-- ❌ Real n8n integration (using mocks)
 - ❌ Database persistence (using in-memory)
 
 ### 🚧 Next Steps for Production
 
-1. **Replace Mock AI** → Integrate real n8n workflows
+1. **Harden AI** → Add monitoring, retries, and guardrails around Gemini calls
 2. **Add Database** → PostgreSQL/MongoDB for persistence
 3. **Add Authentication** → User accounts and sessions
 4. **Implement Drag & Drop** → Visual itinerary editor

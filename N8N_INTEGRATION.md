@@ -1,5 +1,7 @@
 # n8n Integration Guide
 
+> Deprecated: the product no longer uses n8n. AI calls are made directly from the backend via Gemini (`aiService`). See `AI_INTEGRATION.md` for the current flow. This document remains for historical reference only.
+
 ## Overview
 
 Ody'sai uses **n8n workflows** to power all AI-driven features. The backend communicates with n8n via HTTP webhooks, sending structured JSON requests and receiving AI-generated responses.

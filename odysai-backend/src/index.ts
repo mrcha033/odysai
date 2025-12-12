@@ -3,7 +3,6 @@ import express from 'express';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
 import { store } from './store';
-import { n8nService } from './n8nService';
 import { aiService } from './aiService';
 import { Room, Member, Survey, RoomStatus, PlanPackage } from './types';
 
@@ -95,7 +94,7 @@ app.post('/api/members/:memberId/survey', (req, res) => {
   res.json(updated);
 });
 
-// Generate initial AI plans (using n8n)
+// Generate initial AI plans (Gemini-backed)
 app.post('/api/rooms/:roomId/plans/generate', async (req, res) => {
   const { roomId } = req.params;
 
@@ -112,45 +111,10 @@ app.post('/api/rooms/:roomId/plans/generate', async (req, res) => {
   }
 
   try {
-    let packages: PlanPackage[] = [];
-
-    try {
-      // Call n8n plan-initialize workflow
-      const n8nResult = await n8nService.generateInitialPackages(
-        room,
-        membersWithSurveys.map(m => m.survey!),
-        membersWithSurveys.map(m => ({ id: m.id, nickname: m.nickname }))
-      );
-
-      // Convert n8n response to our PlanPackage format
-      packages = n8nResult.packages.map(pkg => ({
-        id: pkg.id,
-        roomId,
-        name: pkg.label,
-        description: pkg.description,
-        days: pkg.days.map((day, index) => ({
-          day: index + 1,
-          date: day.date,
-          slots: day.slots.map(slot => ({
-            id: slot.id,
-            time: slot.startTime,
-            duration: calculateDuration(slot.startTime, slot.endTime),
-            title: slot.place.name,
-            description: slot.place.notes,
-            location: slot.place.city,
-            category: slot.place.category,
-            tags: slot.place.tags,
-          })),
-        })),
-        themeEmphasis: pkg.scoreSummary ? [pkg.scoreSummary.substring(0, 30)] : [],
-      }));
-    } catch (error) {
-      console.warn('⚠️ n8n service failed, falling back to mock AI:', (error as Error).message);
-      packages = await aiService.generateInitialPackages(
-        room,
-        membersWithSurveys.map(m => m.survey!)
-      );
-    }
+    const packages = await aiService.generateInitialPackages(
+      room,
+      membersWithSurveys.map(m => m.survey!)
+    );
 
     store.setPlanPackages(roomId, packages);
     res.json(packages);
@@ -238,12 +202,12 @@ app.post('/api/rooms/:roomId/trips/start', (req, res) => {
   res.json(trip);
 });
 
-// Replace a spot in the trip (using n8n)
+// Replace a spot in the trip (Gemini-backed)
 app.post('/api/trips/:tripId/replace-spot', async (req, res) => {
   const { tripId } = req.params;
   const { slotId, reason, day } = req.body;
 
-  const trip = Array.from((store as any).trips.values()).find((t: any) => t.id === tripId);
+  const trip = store.getTrip(tripId);
   if (!trip) {
     return res.status(404).json({ error: 'Trip not found' });
   }
@@ -259,72 +223,27 @@ app.post('/api/trips/:tripId/replace-spot', async (req, res) => {
   }
 
   try {
-    // Prepare n8n input
-    const n8nInput = {
-      tripId,
-      date: dayPlan.date,
-      slotToReplace: {
-        id: slot.id,
-        startTime: slot.time,
-        endTime: addMinutes(slot.time, slot.duration),
-        place: {
-          id: slot.id,
-          name: slot.title,
-          category: slot.category,
-          city: slot.location,
-          tags: slot.tags,
-          notes: slot.description,
-        },
-      },
-      reason: reason.toUpperCase(),
-      context: {
-        currentCity: slot.location,
-        timeNow: slot.time,
-        weather: 'UNKNOWN' as const,
-        budgetLevel: 'MID' as const,
-        dominantEmotions: trip.plan.themeEmphasis || [],
-        instagramImportanceAvg: 5,
-        sameAreaHint: null,
-      },
-      dayPlan: {
-        date: dayPlan.date,
-        slots: dayPlan.slots.map((s: any) => ({
-          startTime: s.time,
-          endTime: addMinutes(s.time, s.duration),
-          place: {
-            name: s.title,
-            category: s.category,
-            city: s.location,
-            tags: s.tags,
-          },
-        })),
-      },
-    };
+    const roomMembers = store.getRoomMembers(trip.roomId);
+    const constraints = roomMembers.flatMap(m => m.survey?.constraints || []);
+    const dislikes = roomMembers.flatMap(m => m.survey?.dislikes || []);
+    const instagramImportance = Math.round(
+      roomMembers.reduce((acc, member) => acc + (member.survey?.instagramImportance ?? 3), 0) /
+      Math.max(roomMembers.length, 1)
+    );
 
-    let alternatives;
-
-    try {
-      const n8nResult = await n8nService.replaceSpot(n8nInput);
-
-      // Convert n8n replacements to our ActivitySlot format
-      alternatives = n8nResult.replacements.map(replacement => ({
-        id: replacement.id,
-        time: replacement.suggestedTime.startTime,
-        duration: calculateDuration(replacement.suggestedTime.startTime, replacement.suggestedTime.endTime),
-        title: replacement.name,
-        description: replacement.reasonSummary,
-        location: replacement.city,
-        category: replacement.category,
-        tags: replacement.tags,
-      }));
-    } catch (error) {
-      console.warn('⚠️ n8n service failed, falling back to mock AI:', (error as Error).message);
-      alternatives = await aiService.replaceSpot(
-        slot,
-        reason,
-        { day, location: slot.location }
-      );
-    }
+    const alternatives = await aiService.replaceSpot(
+      slot,
+      reason,
+      {
+        day,
+        location: slot.location,
+        themeEmphasis: trip.plan.themeEmphasis,
+        constraints,
+        dislikes,
+        instagramImportance,
+        dayPlanSlots: dayPlan.slots,
+      }
+    );
 
     res.json(alternatives);
   } catch (error) {
@@ -333,22 +252,7 @@ app.post('/api/trips/:tripId/replace-spot', async (req, res) => {
   }
 });
 
-// Helper functions
-function calculateDuration(startTime: string, endTime: string): number {
-  const [startHour, startMin] = startTime.split(':').map(Number);
-  const [endHour, endMin] = endTime.split(':').map(Number);
-  return (endHour * 60 + endMin) - (startHour * 60 + startMin);
-}
-
-function addMinutes(time: string, minutes: number): string {
-  const [hour, min] = time.split(':').map(Number);
-  const totalMinutes = hour * 60 + min + minutes;
-  const newHour = Math.floor(totalMinutes / 60);
-  const newMin = totalMinutes % 60;
-  return `${String(newHour).padStart(2, '0')}:${String(newMin).padStart(2, '0')}`;
-}
-
 app.listen(PORT, () => {
   console.log(`🚀 Ody'sai Backend running on http://localhost:${PORT}`);
-  console.log(`📡 n8n integration enabled: ${process.env.N8N_BASE_URL || 'http://localhost:5678'}`);
+  console.log(`🤖 AI provider: Gemini (${process.env.GEMINI_MODEL || 'gemini-1.5-flash-latest'})`);
 });

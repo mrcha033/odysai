@@ -54,6 +54,10 @@ class DataStore {
     return trip;
   }
 
+  getTrip(id: string): Trip | undefined {
+    return this.trips.get(id);
+  }
+
   getTripByRoom(roomId: string): Trip | undefined {
     return Array.from(this.trips.values()).find(t => t.roomId === roomId);
   }

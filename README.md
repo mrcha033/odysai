@@ -24,8 +24,8 @@ Ody'sai is a web-first, AI-assisted group trip planning application that reduces
 
 ### Backend
 - **Node.js** with **Express** (TypeScript)
-- **n8n** workflows for AI orchestration
-- **Google Gemini** (via n8n) for LLM features
+- **Google Gemini** (via `@google/generative-ai`) for LLM features
+- In-process AI service for itinerary + replacement logic
 - In-memory data store (for MVP)
 
 ## Project Structure
@@ -37,8 +37,7 @@ odysai/
 │   │   ├── index.ts         # Express server & API routes
 │   │   ├── types.ts         # TypeScript interfaces
 │   │   ├── store.ts         # In-memory data store
-│   │   ├── n8nService.ts    # n8n webhook integration
-│   │   └── n8nTypes.ts      # n8n workflow schemas
+│   │   └── aiService.ts     # Gemini-backed AI integration
 │   ├── .env                 # Environment configuration
 │   ├── package.json
 │   └── tsconfig.json
@@ -66,49 +65,26 @@ odysai/
 ### Prerequisites
 
 - Node.js 18+ and npm/yarn
-- **n8n** (for AI features)
-- **Google Gemini API Key** (for LLM calls)
+- **Google Gemini API Key** (for LLM calls – `GEMINI_API_KEY`)
 
 ### Installation
 
-1. **Install n8n** (if not already installed):
-
-```bash
-# Option 1: Docker (Recommended)
-docker run -it --rm --name n8n -p 5678:5678 -v ~/.n8n:/home/node/.n8n n8nio/n8n
-
-# Option 2: npm
-npm install -g n8n
-n8n start
-```
-
-Access n8n at `http://localhost:5678`
-
-2. **Import n8n workflow**:
-   - Open n8n UI → Workflows → Import from File
-   - Import the workflow JSON (see **N8N_INTEGRATION.md** for details)
-   - Configure Google Gemini credentials
-   - Activate the workflow
-
-3. **Install backend dependencies:**
+1. **Install backend dependencies:**
 
 ```bash
 cd odysai-backend
 npm install
 ```
 
-4. **Configure environment** (odysai-backend/.env):
+2. **Configure environment** (odysai-backend/.env):
 
 ```bash
-N8N_BASE_URL=http://localhost:5678
-N8N_PLAN_INITIALIZE_PATH=/webhook/388e4a39-35ec-4528-8e85-b3d87397d9f5
-N8N_PLAN_REFINE_PATH=/webhook/3ace88cd-d82c-430a-a6d8-44a909a98782
-N8N_TRIP_REPLACE_SPOT_PATH=/webhook/09af4612-7c3d-411e-abfe-b97e3b8651af
-N8N_TRIP_REPORT_PATH=/webhook/dc483177-7150-4162-87cc-39741450a85d
+GEMINI_API_KEY=your_google_gemini_api_key
+GEMINI_MODEL=gemini-1.5-flash-latest
 PORT=3001
 ```
 
-5. **Install frontend dependencies:**
+3. **Install frontend dependencies:**
 
 ```bash
 cd odysai-frontend
@@ -119,13 +95,7 @@ npm install
 
 You need to run **three services**:
 
-**Terminal 1 - n8n:**
-
-```bash
-n8n start  # or use Docker
-```
-
-**Terminal 2 - Backend:**
+**Terminal 1 - Backend:**
 
 ```bash
 cd odysai-backend
@@ -134,7 +104,7 @@ npm run dev
 
 The backend will start on `http://localhost:3001`
 
-**Terminal 3 - Frontend:**
+**Terminal 2 - Frontend:**
 
 ```bash
 cd odysai-frontend
@@ -145,7 +115,7 @@ The frontend will start on `http://localhost:3000`
 
 Open your browser to `http://localhost:3000` to use the application.
 
-**📖 For detailed n8n setup, see [N8N_INTEGRATION.md](./N8N_INTEGRATION.md)**
+**📖 For AI setup details, see [AI_INTEGRATION.md](./AI_INTEGRATION.md)**
 
 ## User Flow
 
@@ -208,7 +178,7 @@ This is an MVP implementation focusing on core features:
 **Included:**
 - ✅ Room creation and invites
 - ✅ Member surveys
-- ✅ AI plan generation (mocked)
+- ✅ AI plan generation (Gemini with built-in fallback templates)
 - ✅ Plan selection
 - ✅ Ready status tracking
 - ✅ Trip lobby
@@ -221,12 +191,11 @@ This is an MVP implementation focusing on core features:
 - ❌ Post-trip story reports
 - ❌ User authentication
 - ❌ Persistent database
-- ❌ Real n8n integration
 - ❌ Drag-and-drop editor
 
 ## Future Enhancements
 
-1. **n8n Integration**: Replace mock AI service with real n8n workflows
+1. **AI Observability**: Logging, tracing, and guardrails for Gemini calls
 2. **Database**: Add PostgreSQL/MongoDB for persistence
 3. **Authentication**: Add user accounts and session management
 4. **Real-time Sync**: WebSocket for live updates
@@ -237,7 +206,7 @@ This is an MVP implementation focusing on core features:
 ## Development Notes
 
 - Backend uses in-memory storage (data resets on server restart)
-- AI responses are mocked with realistic delays
+- AI responses are generated via Gemini; if `GEMINI_API_KEY` is absent, templates are used
 - No authentication required for MVP (uses localStorage for session)
 - Polling used for updates (not WebSocket)
 

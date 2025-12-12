@@ -45,11 +45,11 @@
 │  └───────────────────────────────────────────────┼───┘  │
 │                                                   │      │
 │  ┌────────────────────────────────────────────────┼──┐  │
-│  │         AI Service (Mock n8n)                 │  │  │
+│  │        AI Service (Gemini)                   │  │  │
 │  │                                                ▼  │  │
 │  │  - generateInitialPackages()    ┌──────────────┐ │  │
 │  │  - refinePackage()              │  LLM Call    │ │  │
-│  │  - replaceSpot()                │  (Simulated) │ │  │
+│  │  - replaceSpot()                │ (Gemini API) │ │  │
 │  │                                 └──────────────┘ │  │
 │  └──────────────────────────────────────────────────┘  │
 │                                                          │
@@ -114,10 +114,10 @@ POST /api/rooms/:id/plans/generate
     ↓
 aiService.generateInitialPackages()
     ↓
-- Analyze surveys
+- Analyze surveys + constraints
+- Call Gemini with structured JSON schema
 - Generate 3 themed packages
-- Create day-by-day itineraries
-- Simulate delay (1.5s)
+- Fallback to template plans if Gemini unavailable
     ↓
 store.setPlanPackages()
     ↓
@@ -289,10 +289,10 @@ App
                     │
          ┌──────────┼──────────┐
          │          │          │
-    ┌────▼───┐  ┌──▼───┐  ┌──▼─────┐
-    │ n8n    │  │ DB   │  │ Cache  │
-    │Workflows│ │(PG)  │  │(Redis) │
-    └────┬───┘  └──────┘  └────────┘
+    ┌────▼─────┐  ┌──▼───┐  ┌──▼─────┐
+    │ AI       │  │ DB   │  │ Cache  │
+    │ Service  │  │(PG)  │  │(Redis) │
+    └────┬─────┘  └──────┘  └────────┘
          │
     ┌────▼────────┐
     │ LLM APIs    │
@@ -311,7 +311,7 @@ App
 - Frontend: Static hosting (Vercel/Netlify)
 - Backend: Container (Docker) on Cloud Run/ECS
 - Database: Managed PostgreSQL
-- n8n: Self-hosted or n8n Cloud
+- AI: Google Gemini API (managed by Google)
 - CDN: CloudFlare/CloudFront
 
 ## Security Considerations (Future)
@@ -321,7 +321,7 @@ App
 3. **Input Validation**: Joi/Zod schemas
 4. **CORS**: Configured for production domains
 5. **Secrets**: Environment variables
-6. **API Keys**: Stored in n8n/backend only
+6. **API Keys**: Stored in backend only (never shipped to clients)
 7. **SQL Injection**: Parameterized queries
 8. **XSS**: React auto-escaping + CSP headers
 

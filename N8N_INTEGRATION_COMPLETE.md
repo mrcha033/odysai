@@ -1,5 +1,7 @@
 # ✅ n8n Integration - Complete!
 
+> Deprecated: n8n has been removed from the runtime. AI now runs directly via Gemini inside `aiService` (see `AI_INTEGRATION.md`). This document is kept for historical reference only.
+
 ## Summary
 
 Your Ody'sai application now has **full n8n integration** replacing the mock AI service. The backend communicates directly with your n8n workflows using the webhook URLs you provided.
