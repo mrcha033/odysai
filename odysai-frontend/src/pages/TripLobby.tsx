@@ -14,6 +14,9 @@ export default function TripLobby() {
   const [alternatives, setAlternatives] = useState<ActivitySlot[]>([]);
   const [isLoadingAlternatives, setIsLoadingAlternatives] = useState(false);
   const [dragging, setDragging] = useState<{ fromDay: number; fromIndex: number } | null>(null);
+  const [dayEmotionsInput, setDayEmotionsInput] = useState('');
+  const [photoUrlsInput, setPhotoUrlsInput] = useState('');
+  const [feedbackInput, setFeedbackInput] = useState('');
 
   useEffect(() => {
     const roomId = localStorage.getItem('roomId');
@@ -90,6 +93,12 @@ export default function TripLobby() {
     persistPlan(updated);
   };
 
+  const parseList = (input: string) =>
+    input
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+
   if (!trip) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
@@ -155,7 +164,7 @@ export default function TripLobby() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: dayIndex * 0.1 + slotIndex * 0.05 }}
-                  className="card p-4 hover:shadow-md transition-shadow group"
+                  className={`card p-4 hover:shadow-md transition-shadow group ${dragging ? 'opacity-90 border-dashed border-slate-200' : ''}`}
                   draggable
                   onDragStart={() => handleDragStart(day.day, slotIndex)}
                   onDragOver={(e) => e.preventDefault()}
@@ -199,19 +208,58 @@ export default function TripLobby() {
       </div>
 
       <div className="flex justify-center pt-8 pb-12">
-        <button
-          onClick={async () => {
-            if (!trip) return;
-            if (window.confirm('Are you sure you want to complete this trip?')) {
-              await api.completeTrip(trip.id, {});
-              // Navigate to report page
-              window.location.href = `/trip/${trip.id}/report`;
-            }
-          }}
-          className="btn btn-primary px-8 py-3 text-lg shadow-lg shadow-primary-500/30 hover:shadow-primary-500/50 transform hover:-translate-y-1 transition-all"
-        >
-          Complete Trip 🎉
-        </button>
+        <div className="w-full max-w-3xl bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+          <h4 className="text-lg font-semibold text-slate-800">Trip wrap-up</h4>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="md:col-span-2 space-y-2">
+              <label className="text-sm font-medium text-slate-700">Day emotions (comma separated)</label>
+              <input
+                type="text"
+                value={dayEmotionsInput}
+                onChange={(e) => setDayEmotionsInput(e.target.value)}
+                placeholder="e.g., 설렘, 피곤 but happy, 힐링"
+                className="input"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Photo URLs (optional)</label>
+              <input
+                type="text"
+                value={photoUrlsInput}
+                onChange={(e) => setPhotoUrlsInput(e.target.value)}
+                placeholder="Comma separated URLs"
+                className="input"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700">Feedback / story notes</label>
+            <textarea
+              value={feedbackInput}
+              onChange={(e) => setFeedbackInput(e.target.value)}
+              placeholder="What stood out? Any learnings?"
+              className="input min-h-[80px]"
+            />
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={async () => {
+                if (!trip) return;
+                if (window.confirm('완료하시겠어요? 보고서가 생성됩니다.')) {
+                  await api.completeTrip(trip.id, {
+                    dayEmotions: parseList(dayEmotionsInput),
+                    photos: parseList(photoUrlsInput),
+                    feedback: feedbackInput,
+                  });
+                  window.location.href = `/trip/${trip.id}/report`;
+                }
+              }}
+              className="btn btn-primary px-8 py-3 text-lg shadow-lg shadow-primary-500/30 hover:shadow-primary-500/50 transform hover:-translate-y-1 transition-all"
+            >
+              Complete Trip 🎉
+            </button>
+          </div>
+        </div>
       </div>
 
       <AnimatePresence>

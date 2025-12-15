@@ -119,6 +119,7 @@ export interface ConflictReport {
 export interface PlanVotes {
   tallies: Record<string, number>; // planId -> votes
   voters: Record<string, string>; // memberId -> planId
+  winnerPlanId?: string;
 }
 
 export interface TripReportCard {

@@ -12,6 +12,7 @@ export default function PlanSelection() {
   const [selectedPackage, setSelectedPackage] = useState<PlanPackage | null>(null);
   const [loading, setLoading] = useState(true);
   const [votes, setVotes] = useState<Record<string, number>>({});
+  const [winnerPlanId, setWinnerPlanId] = useState<string | undefined>();
   const [memberId, setMemberId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export default function PlanSelection() {
       setPackages(plans);
       const voteData = await api.getVotes(roomId);
       setVotes(voteData?.tallies || {});
+      setWinnerPlanId(voteData?.winnerPlanId);
       setLoading(false);
     } catch (error) {
       console.error('Failed to load plans:', error);
@@ -42,6 +44,7 @@ export default function PlanSelection() {
     if (!roomId || !memberId) return;
     const updated = await api.votePlan(roomId, memberId, pkg.id);
     setVotes(updated?.tallies || {});
+    setWinnerPlanId(updated?.winnerPlanId);
     setSelectedPackage(pkg);
   };
 
@@ -92,6 +95,11 @@ export default function PlanSelection() {
             {selectedPackage?.id === pkg.id && (
               <div className="absolute top-4 right-4 bg-primary-500 text-white p-1 rounded-full">
                 <Check size={16} strokeWidth={3} />
+              </div>
+            )}
+            {winnerPlanId === pkg.id && (
+              <div className="absolute top-4 left-4 bg-emerald-500 text-white text-xs px-2 py-1 rounded-full shadow-sm">
+                Leading
               </div>
             )}
 
