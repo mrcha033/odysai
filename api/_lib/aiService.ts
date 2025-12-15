@@ -43,11 +43,13 @@ export class AIService {
   private readonly apiKey?: string;
   private readonly model: string;
   private readonly imageModel: string;
+  private readonly fallbackModel: string;
 
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY;
-    this.model = process.env.GEMINI_MODEL || 'gemini-1.5-flash-latest';
+    this.model = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
     this.imageModel = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image';
+    this.fallbackModel = process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.0-flash';
   }
 
   async generateInitialPackages(
@@ -264,13 +266,28 @@ export class AIService {
   // --- Gemini helpers -----------------------------------------------------
 
   public async generateStructuredJSON<T>(prompt: string, schema: any): Promise<T> {
+    // Try primary model, then fallback model if configured differently
+    try {
+      return await this.generateWithModel<T>(prompt, schema, this.model);
+    } catch (error) {
+      const message = (error as Error).message || '';
+      const shouldFallback = this.fallbackModel && this.fallbackModel !== this.model;
+      if (shouldFallback) {
+        console.warn(`[ai] Primary model failed (${this.model}), retrying with fallback ${this.fallbackModel}: ${message}`);
+        return await this.generateWithModel<T>(prompt, schema, this.fallbackModel);
+      }
+      throw error;
+    }
+  }
+
+  private async generateWithModel<T>(prompt: string, schema: any, modelName: string): Promise<T> {
     if (!this.apiKey) {
       throw new Error('GEMINI_API_KEY is missing');
     }
 
     const genAI = new GoogleGenerativeAI(this.apiKey);
     const model = genAI.getGenerativeModel({
-      model: this.model,
+      model: modelName,
       generationConfig: {
         temperature: 0.6,
         responseMimeType: 'application/json',
