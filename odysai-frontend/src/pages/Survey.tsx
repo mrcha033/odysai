@@ -49,9 +49,9 @@ export default function Survey() {
       mustHaves: mustHavesInput.split(',').map(s => s.trim()).filter(Boolean),
     };
 
-    if (!memberId) return;
+    if (!memberId || !roomId) return;
 
-    await api.submitSurvey(memberId, survey);
+    await api.submitSurvey(roomId, memberId, survey);
     navigate(`/room/${roomId}`);
   };
 

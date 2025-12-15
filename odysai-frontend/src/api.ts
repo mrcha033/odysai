@@ -27,23 +27,25 @@ export const api = {
     const res = await fetch(`${API_BASE}/rooms/${roomId}/members`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nickname }),
+      body: JSON.stringify({ action: 'join', nickname }),
     });
     return res.json();
   },
 
-  async submitSurvey(memberId: string, survey: Survey): Promise<Member> {
-    const res = await fetch(`${API_BASE}/members/${memberId}/survey`, {
+  async submitSurvey(roomId: string, memberId: string, survey: Survey): Promise<Member> {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/members`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(survey),
+      body: JSON.stringify({ action: 'survey', memberId, survey }),
     });
     return res.json();
   },
 
   async generatePlans(roomId: string): Promise<PlanPackage[]> {
-    const res = await fetch(`${API_BASE}/rooms/${roomId}/plans/generate`, {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/plans`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'generate' }),
     });
     return res.json();
   },
@@ -54,42 +56,46 @@ export const api = {
   },
 
   async votePlan(roomId: string, memberId: string, planId: string) {
-    const res = await fetch(`${API_BASE}/rooms/${roomId}/plans/vote`, {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/plans`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ memberId, planId }),
+      body: JSON.stringify({ action: 'vote', memberId, planId }),
     });
     return res.json();
   },
 
   async getVotes(roomId: string) {
-    const res = await fetch(`${API_BASE}/rooms/${roomId}/plans/vote`);
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/plans`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'votes' }),
+    });
     return res.json();
   },
 
   async updatePlan(roomId: string, planId: string, updates: Partial<PlanPackage>) {
-    const res = await fetch(`${API_BASE}/rooms/${roomId}/plans/update`, {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/plans`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ planId, updates }),
+      body: JSON.stringify({ action: 'update', planId, updates }),
     });
     return res.json();
   },
 
   async selectPlan(roomId: string, planId: string): Promise<PlanPackage> {
-    const res = await fetch(`${API_BASE}/rooms/${roomId}/plans/select`, {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/plans`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ planId }),
+      body: JSON.stringify({ action: 'select', planId }),
     });
     return res.json();
   },
 
-  async setReady(memberId: string, isReady: boolean): Promise<Member> {
-    const res = await fetch(`${API_BASE}/members/${memberId}/ready`, {
+  async setReady(roomId: string, memberId: string, isReady: boolean): Promise<Member> {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/members`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isReady }),
+      body: JSON.stringify({ action: 'ready', memberId, isReady }),
     });
     return res.json();
   },
@@ -104,19 +110,19 @@ export const api = {
   },
 
   async replaceSpot(tripId: string, slotId: string, reason: string, day: number): Promise<ActivitySlot[]> {
-    const res = await fetch(`${API_BASE}/trips/${tripId}/replace-spot`, {
+    const res = await fetch(`${API_BASE}/trips/${tripId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slotId, reason, day }),
+      body: JSON.stringify({ action: 'replace-spot', slotId, reason, day }),
     });
     return res.json();
   },
 
   async completeTrip(tripId: string, payload: { dayEmotions?: string[]; photos?: string[]; feedback?: string }) {
-    const res = await fetch(`${API_BASE}/trips/${tripId}/complete`, {
+    const res = await fetch(`${API_BASE}/trips/${tripId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ action: 'complete', ...payload }),
     });
     return res.json();
   },
@@ -127,23 +133,29 @@ export const api = {
   },
 
   async generateReportImage(tripId: string): Promise<{ imageData: string }> {
-    const res = await fetch(`${API_BASE}/trips/${tripId}/report-image`, {
+    const res = await fetch(`${API_BASE}/trips/${tripId}`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'report-image' }),
     });
     return res.json();
   },
 
   async addTripPhoto(tripId: string, url: string): Promise<{ photos: string[] }> {
-    const res = await fetch(`${API_BASE}/trips/${tripId}/photos`, {
+    const res = await fetch(`${API_BASE}/trips/${tripId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ action: 'photo-add', url }),
     });
     return res.json();
   },
 
   async getTripPhotos(tripId: string): Promise<{ photos: string[] }> {
-    const res = await fetch(`${API_BASE}/trips/${tripId}/photos`);
+    const res = await fetch(`${API_BASE}/trips/${tripId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'photo-list' }),
+    });
     return res.json();
   },
 };

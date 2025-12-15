@@ -128,6 +128,10 @@ export class AIService {
       dislikes?: string[];
       instagramImportance?: number;
       dayPlanSlots?: ActivitySlot[];
+      consensus?: ConsensusBand;
+      conflicts?: ConflictItem[];
+      mustHaves?: string[];
+      priorityNicknames?: string[];
     }
   ): Promise<ActivitySlot[]> {
     const prompt = this.buildReplacementPrompt(currentSlot, reason, context);
@@ -259,7 +263,7 @@ export class AIService {
 
   // --- Gemini helpers -----------------------------------------------------
 
-  private async generateStructuredJSON<T>(prompt: string, schema: any): Promise<T> {
+  public async generateStructuredJSON<T>(prompt: string, schema: any): Promise<T> {
     if (!this.apiKey) {
       throw new Error('GEMINI_API_KEY is missing');
     }

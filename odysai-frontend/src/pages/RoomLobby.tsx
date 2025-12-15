@@ -64,8 +64,8 @@ export default function RoomLobby() {
   };
 
   const handleToggleReady = async () => {
-    if (!currentMember) return;
-    await api.setReady(currentMember.id, !currentMember.isReady);
+    if (!currentMember || !roomId) return;
+    await api.setReady(roomId, currentMember.id, !currentMember.isReady);
     loadRoomStatus();
   };
 

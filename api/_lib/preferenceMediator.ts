@@ -263,7 +263,8 @@ export function scorePlan(plan: PlanPackage, members: Member[]): PlanFitScore {
       const finalScore = Math.min(100, Math.max(0, Math.round(base * weight)));
       const notes: string[] = [];
       if (finalScore < 50) notes.push('Below neutral fit');
-      if (member.survey?.instagramImportance >= 4) notes.push('Needs photogenic spots');
+      const instaImportance = member.survey?.instagramImportance ?? 3;
+      if (instaImportance >= 4) notes.push('Needs photogenic spots');
       if (member.survey?.budgetLevel === 'low') notes.push('Prefer budget-friendly options');
 
       return { memberId: member.id, nickname: member.nickname, score: finalScore, notes };
