@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { v4 as uuidv4 } from 'uuid';
-import { PlanPackage, DayPlan, ActivitySlot, Survey, Room } from './types';
+import { PlanPackage, DayPlan, ActivitySlot, Survey, Room, ConflictReport, PreferenceProfile, ConsensusBand, ConflictItem } from './types';
 
 type ItinerarySchemaResult = {
   packages: Array<{
@@ -48,9 +48,13 @@ export class AIService {
     this.model = process.env.GEMINI_MODEL || 'gemini-1.5-flash-latest';
   }
 
-  async generateInitialPackages(room: Room, surveys: Survey[]): Promise<PlanPackage[]> {
+  async generateInitialPackages(
+    room: Room,
+    surveys: Survey[],
+    context?: { conflict?: ConflictReport; profiles?: PreferenceProfile[] }
+  ): Promise<PlanPackage[]> {
     const dayCount = this.getDayCount(room.dateRange);
-    const prompt = this.buildItineraryPrompt(room, surveys, dayCount);
+    const prompt = this.buildItineraryPrompt(room, surveys, dayCount, context);
 
     try {
       const raw = await this.generateStructuredJSON<ItinerarySchemaResult>(
@@ -140,21 +144,42 @@ export class AIService {
 
   // --- Prompt builders ----------------------------------------------------
 
-  private buildItineraryPrompt(room: Room, surveys: Survey[], dayCount: number): string {
+  private buildItineraryPrompt(
+    room: Room,
+    surveys: Survey[],
+    dayCount: number,
+    context?: { conflict?: ConflictReport; profiles?: PreferenceProfile[] }
+  ): string {
     const surveySummary = this.summarizeSurveys(surveys);
     const wakeTimes = surveys.map(s => s.wakeUpTime).filter(Boolean);
     const typicalWake = wakeTimes[0] || '08:00';
+
+    const consensus = context?.conflict?.consensus;
+    const conflicts = context?.conflict?.conflicts || [];
+    const mustHaves = surveys.flatMap(s => s.mustHaves || []);
+    const consensusLine = consensus
+      ? `Consensus guidance → Budget: ${consensus.budget}, Wake window: ${consensus.wakeWindow.start}-${consensus.wakeWindow.end}, Shared constraints: ${consensus.sharedConstraints.join(', ') || 'none'}, Dominant emotions: ${consensus.dominantEmotions.join(', ') || 'balanced'}`
+      : null;
+    const conflictLines = conflicts.slice(0, 3).map(c => `${c.type} (${c.severity}): ${c.description}`).join(' | ');
+    const mustHaveLine = mustHaves.length ? `Must-have activities/themes to include: ${mustHaves.join(', ')}` : null;
+    const conflictLine = conflicts.length ? `Known conflicts to mediate: ${conflictLines}` : 'Known conflicts: none declared';
 
     return [
       'You are Ody\'sai, a Korean AI travel planner generating group-friendly itineraries.',
       `Destination: ${room.city}. Dates: ${room.dateRange.start} to ${room.dateRange.end} (${dayCount} days).`,
       `Themes to highlight: ${room.theme.join(', ') || 'balancing rest and exploration'}.`,
       `Traveler count: ${room.travelerCount}. Typical wake-up: ${typicalWake}.`,
+      consensusLine || `Group guidance: Budget ${surveySummary.budget || 'medium'}, wake target ${typicalWake}.`,
       `Group emotions: ${surveySummary.emotions.join(', ') || 'balanced'}. Dislikes: ${surveySummary.dislikes.join(', ') || 'none declared'}.`,
       `Constraints: ${surveySummary.constraints.join(', ') || 'none declared'}. Budget: ${surveySummary.budget || 'medium'}. Instagram importance (1-5 avg): ${surveySummary.instagramImportance}.`,
+      surveySummary.purposes?.length ? `Travel purposes: ${surveySummary.purposes.join(', ')}` : 'Travel purposes: not specified.',
+      `Stamina preference: ${surveySummary.stamina}, Max preferred move: ${surveySummary.maxTravelMinutes} minutes.`,
+      conflictLine,
+      mustHaveLine || '',
       'Create exactly 3 distinct itinerary packages, varied by vibe (healing, balanced, adventurous, foodie, cultural).',
       'Keep daily schedules realistic: chronological times, 3-5 slots per day, durations 60-210 minutes, reasonable meal times.',
       'Prefer avoiding dislikes and honoring constraints. Include at least one visually appealing spot per day if instagram importance is high.',
+      'Aim for fairness: ensure each traveler has at least one slot per day matching their emotions/must-haves while avoiding shared constraints.',
       'Return JSON only with the provided schema. Do not include any text outside JSON.',
     ].join('\n');
   }
@@ -170,6 +195,10 @@ export class AIService {
       dislikes?: string[];
       instagramImportance?: number;
       dayPlanSlots?: ActivitySlot[];
+      consensus?: ConsensusBand;
+      conflicts?: ConflictItem[];
+      mustHaves?: string[];
+      priorityNicknames?: string[];
     }
   ): string {
     const otherSlots = (context.dayPlanSlots || [])
@@ -177,13 +206,27 @@ export class AIService {
       .map(slot => `${slot.time} ${slot.title} (${slot.location})`)
       .join(' | ');
 
+    const conflictLine = (context.conflicts || [])
+      .slice(0, 2)
+      .map(c => `${c.type}:${c.severity}`)
+      .join(', ');
+    const consensusLine = context.consensus
+      ? `Consensus: budget ${context.consensus.budget}, wake ${context.consensus.wakeWindow.start}-${context.consensus.wakeWindow.end}, shared constraints ${context.consensus.sharedConstraints.join(', ') || 'none'}`
+      : null;
+    const mustHaveLine = (context.mustHaves || []).length ? `Must include (if possible): ${(context.mustHaves || []).join(', ')}` : null;
+    const priorityLine = (context.priorityNicknames || []).length ? `Prioritize satisfaction for: ${(context.priorityNicknames || []).join(', ')}` : null;
+
     return [
       'You are replacing a single activity inside an existing itinerary. Keep timing cohesive and location-aware.',
       `Current slot (to replace): ${currentSlot.time} for ${currentSlot.duration} minutes, "${currentSlot.title}" in ${context.location}.`,
       `Reason: ${reason}. Day #: ${context.day}. Nearby plan: ${otherSlots || 'no other slots provided'}.`,
+      consensusLine || '',
       `Avoid dislikes: ${(context.dislikes || []).join(', ') || 'none declared'}. Respect constraints: ${(context.constraints || []).join(', ') || 'none declared'}.`,
       `Themes to preserve: ${(context.themeEmphasis || []).join(', ') || 'balanced experience'}.`,
+      mustHaveLine || '',
+      priorityLine || '',
       `Instagram importance (1-5): ${context.instagramImportance ?? 3}. Prefer photogenic options if >=4.`,
+      conflictLine ? `Do not worsen conflicts: ${conflictLine}.` : '',
       'Suggest 2-3 alternatives. Keep start times near the original slot (±60 minutes) and durations similar unless explicitly improved.',
       'Return JSON only with the provided schema. Do not add explanations.',
     ].join('\n');
@@ -417,13 +460,23 @@ export class AIService {
     const constraints = new Set<string>();
     let budgetScore = 0;
     let instaScore = 0;
+    const purposes = new Set<string>();
+    const staminaScores: number[] = [];
+    let maxTravel = 0;
 
     surveys.forEach(s => {
       s.emotions.forEach(e => emotions.add(e));
       s.dislikes.forEach(d => dislikes.add(d));
       s.constraints.forEach(c => constraints.add(c));
+      (s.travelPurpose || []).forEach(p => purposes.add(p));
       budgetScore += this.budgetToScore(s.budgetLevel);
       instaScore += s.instagramImportance || 3;
+      if (s.staminaLevel) {
+        staminaScores.push(this.staminaToScore(s.staminaLevel));
+      }
+      if (s.maxTravelMinutes) {
+        maxTravel += s.maxTravelMinutes;
+      }
     });
 
     const count = Math.max(surveys.length, 1);
@@ -434,6 +487,9 @@ export class AIService {
       constraints: Array.from(constraints),
       budget: this.scoreToBudget(Math.round(budgetScore / count)),
       instagramImportance: Math.round(instaScore / count),
+      purposes: Array.from(purposes),
+      stamina: staminaScores.length ? this.scoreToStamina(Math.round(staminaScores.reduce((a, b) => a + b, 0) / staminaScores.length)) : 'medium',
+      maxTravelMinutes: maxTravel ? Math.round(maxTravel / surveys.length) : 45,
     };
   }
 
@@ -451,6 +507,18 @@ export class AIService {
   }
 
   private scoreToBudget(score: number): 'low' | 'medium' | 'high' {
+    if (score <= 1) return 'low';
+    if (score >= 3) return 'high';
+    return 'medium';
+  }
+
+  private staminaToScore(level: 'low' | 'medium' | 'high') {
+    if (level === 'low') return 1;
+    if (level === 'high') return 3;
+    return 2;
+  }
+
+  private scoreToStamina(score: number): 'low' | 'medium' | 'high' {
     if (score <= 1) return 'low';
     if (score >= 3) return 'high';
     return 'medium';

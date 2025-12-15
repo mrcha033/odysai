@@ -23,6 +23,12 @@ export interface Survey {
   constraints: string[];
   wakeUpTime: string;
   instagramImportance: number;
+  priority?: 'low' | 'medium' | 'high';
+  mustHaves?: string[];
+  wakeFlexibilityMinutes?: number;
+  travelPurpose?: string[];
+  staminaLevel?: 'low' | 'medium' | 'high';
+  maxTravelMinutes?: number;
 }
 
 export interface PlanPackage {
@@ -32,6 +38,8 @@ export interface PlanPackage {
   description: string;
   days: DayPlan[];
   themeEmphasis: string[];
+  fitScore?: PlanFitScore;
+  votes?: number;
 }
 
 export interface DayPlan {
@@ -58,6 +66,7 @@ export interface Trip {
   status: 'active' | 'completed';
   startDate: string;
   currentDay: number;
+  report?: TripReport;
 }
 
 export interface RoomStatus {
@@ -67,4 +76,26 @@ export interface RoomStatus {
   planPackages?: PlanPackage[];
   selectedPlan?: PlanPackage;
   trip?: Trip;
+}
+
+export interface PlanFitScore {
+  groupScore: number;
+  perMember: Array<{ memberId: string; nickname: string; score: number; notes: string[] }>;
+  drivers: string[];
+  warnings: string[];
+}
+
+export interface TripReportCard {
+  title: string;
+  body: string;
+  tags: string[];
+  day?: number;
+}
+
+export interface TripReport {
+  tripId: string;
+  summary: string;
+  highlights: string[];
+  cards: TripReportCard[];
+  shareUrl?: string;
 }

@@ -17,6 +17,20 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json(packages);
   }
 
+  if (method === 'POST') {
+    // Select a plan package (does not persist selection yet)
+    const { planId } = req.body;
+    const packages = await store.getPlanPackages(roomId as string);
+    if (!packages) {
+      return res.status(404).json({ error: 'No plans available' });
+    }
+    const selected = packages.find(p => p.id === planId);
+    if (!selected) {
+      return res.status(404).json({ error: 'Plan not found' });
+    }
+    return res.status(200).json(selected);
+  }
+
   return res.status(405).json({ error: 'Method not allowed' });
 }
 

@@ -2,13 +2,13 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { v4 as uuidv4 } from 'uuid';
 import { withCors } from '../../../_lib/handler';
 import { store } from '../../../_lib/kvStore';
+import { buildConflictReport } from '../../../_lib/preferenceMediator';
 
 async function handler(req: VercelRequest, res: VercelResponse) {
   const { roomId } = req.query;
   const { method } = req;
 
   if (method === 'POST') {
-    // Start trip (when all ready)
     const { planId } = req.body;
 
     const room = await store.getRoom(roomId as string);
@@ -28,6 +28,8 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Not all members are ready' });
     }
 
+    const conflictReport = buildConflictReport(members);
+
     const trip = await store.createTrip({
       id: uuidv4(),
       roomId: roomId as string,
@@ -35,6 +37,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       status: 'active',
       startDate: room.dateRange.start,
       currentDay: 1,
+      conflictReport,
     });
 
     return res.status(200).json(trip);

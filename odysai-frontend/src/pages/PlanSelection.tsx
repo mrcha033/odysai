@@ -11,9 +11,13 @@ export default function PlanSelection() {
   const [packages, setPackages] = useState<PlanPackage[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<PlanPackage | null>(null);
   const [loading, setLoading] = useState(true);
+  const [votes, setVotes] = useState<Record<string, number>>({});
+  const [memberId, setMemberId] = useState<string | null>(null);
 
   useEffect(() => {
     loadPlans();
+    const storedMemberId = localStorage.getItem('memberId');
+    setMemberId(storedMemberId);
   }, [roomId]);
 
   const loadPlans = async () => {
@@ -21,6 +25,8 @@ export default function PlanSelection() {
     try {
       const plans = await api.getPlans(roomId);
       setPackages(plans);
+      const voteData = await api.getVotes(roomId);
+      setVotes(voteData?.tallies || {});
       setLoading(false);
     } catch (error) {
       console.error('Failed to load plans:', error);
@@ -29,6 +35,13 @@ export default function PlanSelection() {
   };
 
   const handleSelectPackage = (pkg: PlanPackage) => {
+    setSelectedPackage(pkg);
+  };
+
+  const handleVote = async (pkg: PlanPackage) => {
+    if (!roomId || !memberId) return;
+    const updated = await api.votePlan(roomId, memberId, pkg.id);
+    setVotes(updated?.tallies || {});
     setSelectedPackage(pkg);
   };
 
@@ -70,11 +83,11 @@ export default function PlanSelection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            onClick={() => handleSelectPackage(pkg)}
             className={`cursor-pointer relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${selectedPackage?.id === pkg.id
               ? 'border-primary-500 bg-primary-50/50 shadow-xl shadow-primary-500/20 scale-105 z-10'
               : 'border-slate-200 bg-white hover:border-primary-300 hover:shadow-lg'
               }`}
+            onClick={() => handleSelectPackage(pkg)}
           >
             {selectedPackage?.id === pkg.id && (
               <div className="absolute top-4 right-4 bg-primary-500 text-white p-1 rounded-full">
@@ -86,6 +99,13 @@ export default function PlanSelection() {
               <div>
                 <h3 className="text-xl font-bold text-slate-800 mb-2">{pkg.name}</h3>
                 <p className="text-sm text-slate-500 line-clamp-2">{pkg.description}</p>
+              </div>
+
+              <div className="flex items-center gap-2 text-sm text-primary-600 font-semibold">
+                <span className="px-2 py-1 bg-primary-50 rounded-lg border border-primary-100">Votes: {votes[pkg.id] || 0}</span>
+                {pkg.fitScore && (
+                  <span className="px-2 py-1 bg-emerald-50 rounded-lg border border-emerald-100 text-emerald-600">Fit {pkg.fitScore.groupScore}</span>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -115,6 +135,14 @@ export default function PlanSelection() {
                   </div>
                 ))}
               </div>
+            </div>
+            <div className="px-6 pb-6 flex justify-end gap-3">
+              <button
+                onClick={(e) => { e.stopPropagation(); handleVote(pkg); }}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:border-primary-300 hover:text-primary-700"
+              >
+                Vote
+              </button>
             </div>
           </motion.div>
         ))}

@@ -13,6 +13,7 @@ export default function TripLobby() {
   const [replaceReason, setReplaceReason] = useState('weather');
   const [alternatives, setAlternatives] = useState<ActivitySlot[]>([]);
   const [isLoadingAlternatives, setIsLoadingAlternatives] = useState(false);
+  const [dragging, setDragging] = useState<{ fromDay: number; fromIndex: number } | null>(null);
 
   useEffect(() => {
     const roomId = localStorage.getItem('roomId');
@@ -62,6 +63,31 @@ export default function TripLobby() {
     setTrip(updatedTrip);
     setShowReplaceModal(false);
     setAlternatives([]);
+  };
+
+  const persistPlan = async (updatedTrip: Trip) => {
+    if (!trip) return;
+    await api.updatePlan(trip.roomId, trip.plan.id, { days: updatedTrip.plan.days });
+    setTrip(updatedTrip);
+  };
+
+  const handleDragStart = (day: number, index: number) => {
+    setDragging({ fromDay: day, fromIndex: index });
+  };
+
+  const handleDrop = (targetDay: number, targetIndex: number) => {
+    if (!trip || !dragging) return;
+    const updated = { ...trip, plan: { ...trip.plan, days: trip.plan.days.map(d => ({ ...d, slots: [...d.slots] })) } };
+
+    const fromDayPlan = updated.plan.days.find(d => d.day === dragging.fromDay);
+    const toDayPlan = updated.plan.days.find(d => d.day === targetDay);
+    if (!fromDayPlan || !toDayPlan) return;
+
+    const [moved] = fromDayPlan.slots.splice(dragging.fromIndex, 1);
+    toDayPlan.slots.splice(targetIndex, 0, moved);
+
+    setDragging(null);
+    persistPlan(updated);
   };
 
   if (!trip) {
@@ -130,6 +156,10 @@ export default function TripLobby() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: dayIndex * 0.1 + slotIndex * 0.05 }}
                   className="card p-4 hover:shadow-md transition-shadow group"
+                  draggable
+                  onDragStart={() => handleDragStart(day.day, slotIndex)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => { e.preventDefault(); handleDrop(day.day, slotIndex); }}
                 >
                   <div className="flex items-start gap-4">
                     <div className="min-w-[80px] text-sm font-medium text-slate-500 flex flex-col items-center bg-slate-50 p-2 rounded-lg">
@@ -173,7 +203,7 @@ export default function TripLobby() {
           onClick={async () => {
             if (!trip) return;
             if (window.confirm('Are you sure you want to complete this trip?')) {
-              await api.completeTrip(trip.id);
+              await api.completeTrip(trip.id, {});
               // Navigate to report page
               window.location.href = `/trip/${trip.id}/report`;
             }

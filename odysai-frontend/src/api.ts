@@ -1,8 +1,7 @@
 import { Room, Member, Survey, RoomStatus, PlanPackage, ActivitySlot } from './types';
 
-// Use relative path in production, localhost in development
-const API_BASE = import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.PROD ? '/api' : 'http://localhost:3001/api');
+// Use Vercel serverless (/api) by default; can override via VITE_API_BASE_URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export const api = {
   async createRoom(data: {
@@ -54,6 +53,29 @@ export const api = {
     return res.json();
   },
 
+  async votePlan(roomId: string, memberId: string, planId: string) {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/plans/vote`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memberId, planId }),
+    });
+    return res.json();
+  },
+
+  async getVotes(roomId: string) {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/plans/vote`);
+    return res.json();
+  },
+
+  async updatePlan(roomId: string, planId: string, updates: Partial<PlanPackage>) {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/plans/update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planId, updates }),
+    });
+    return res.json();
+  },
+
   async selectPlan(roomId: string, planId: string): Promise<PlanPackage> {
     const res = await fetch(`${API_BASE}/rooms/${roomId}/plans/select`, {
       method: 'POST',
@@ -90,15 +112,17 @@ export const api = {
     return res.json();
   },
 
-  async completeTrip(_tripId: string): Promise<void> {
-    // In a real app, this would notify the backend.
-    // For now, we'll just return success to allow the UI to proceed.
-    // If there was a backend endpoint:
-    /*
-    await fetch(`${API_BASE}/trips/${tripId}/complete`, {
+  async completeTrip(tripId: string, payload: { dayEmotions?: string[]; photos?: string[]; feedback?: string }) {
+    const res = await fetch(`${API_BASE}/trips/${tripId}/complete`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
-    */
-    return Promise.resolve();
+    return res.json();
+  },
+
+  async getConflictReport(roomId: string) {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/preferences/conflicts`);
+    return res.json();
   },
 };

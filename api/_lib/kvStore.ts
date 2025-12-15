@@ -1,5 +1,6 @@
 import Redis from 'ioredis';
 import { Room, Member, PlanPackage, Trip } from './types';
+import { PlanVotes, TripReport } from './types';
 
 // Create Redis client from REDIS_URL or KV_URL
 const redis = new Redis(process.env.REDIS_URL || process.env.KV_URL || '');
@@ -86,6 +87,16 @@ class KVDataStore {
     const updated = { ...trip, ...updates };
     await redis.set(`trip:${id}`, JSON.stringify(updated));
     return updated;
+  }
+
+  // Voting
+  async setVotes(roomId: string, votes: PlanVotes): Promise<void> {
+    await redis.set(`room:${roomId}:votes`, JSON.stringify(votes));
+  }
+
+  async getVotes(roomId: string): Promise<PlanVotes | null> {
+    const data = await redis.get(`room:${roomId}:votes`);
+    return data ? JSON.parse(data) : null;
   }
 }
 

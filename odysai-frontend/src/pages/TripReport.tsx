@@ -3,12 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MapPin, Calendar, Share2, Home, Star, Award, Heart } from 'lucide-react';
 import { api } from '../api';
-import { Trip } from '../types';
+import { Trip, TripReport } from '../types';
 
 export default function TripReport() {
     const { tripId } = useParams<{ tripId: string }>();
     const navigate = useNavigate();
     const [trip, setTrip] = useState<Trip | null>(null);
+    const [report, setReport] = useState<TripReport | null>(null);
 
     useEffect(() => {
         const roomId = localStorage.getItem('roomId');
@@ -22,6 +23,9 @@ export default function TripReport() {
             const status = await api.getRoomStatus(roomId);
             if (status.trip) {
                 setTrip(status.trip);
+                if (status.trip.report) {
+                    setReport(status.trip.report);
+                }
             }
         } catch (error) {
             console.error('Failed to load trip data:', error);
@@ -36,6 +40,9 @@ export default function TripReport() {
             </div>
         );
     }
+
+    const cards = report?.cards || [];
+    const highlights = report?.highlights || [];
 
     return (
         <motion.div
@@ -54,7 +61,7 @@ export default function TripReport() {
                     <Award size={48} className="text-white" />
                 </motion.div>
                 <h2 className="text-4xl font-bold text-slate-800">Trip Completed! 🏆</h2>
-                <p className="text-slate-500 text-lg">Here's a summary of your amazing journey</p>
+                <p className="text-slate-500 text-lg">{report?.summary || "Here's a summary of your amazing journey"}</p>
             </div>
 
             {/* Trip Summary Card */}
@@ -76,7 +83,7 @@ export default function TripReport() {
                             </div>
                             <div>
                                 <p className="text-sm text-slate-500 font-medium">Destination</p>
-                                <p className="text-lg font-bold text-slate-800">Seoul, South Korea</p>
+                                <p className="text-lg font-bold text-slate-800">{trip.plan.days[0]?.slots[0]?.location || 'Trip'}</p>
                             </div>
                         </div>
 
@@ -97,8 +104,8 @@ export default function TripReport() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {[
                     { label: 'Places Visited', value: trip.plan.days.reduce((acc, day) => acc + day.slots.length, 0), icon: MapPin, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { label: 'Memories Made', value: '∞', icon: Heart, color: 'text-rose-500', bg: 'bg-rose-50' },
-                    { label: 'Rating', value: '4.9', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50' },
+                    { label: 'Highlights', value: highlights.length || '—', icon: Star, color: 'text-amber-500', bg: 'bg-amber-50' },
+                    { label: 'Cards', value: cards.length || '—', icon: Heart, color: 'text-rose-500', bg: 'bg-rose-50' },
                 ].map((stat, index) => (
                     <motion.div
                         key={stat.label}
@@ -115,6 +122,46 @@ export default function TripReport() {
                     </motion.div>
                 ))}
             </div>
+
+            {/* Report Highlights */}
+            {highlights.length > 0 && (
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-2"
+                >
+                    <h4 className="text-lg font-bold text-slate-800">Highlights</h4>
+                    <ul className="list-disc list-inside text-slate-600 space-y-1">
+                        {highlights.map((h, idx) => <li key={idx}>{h}</li>)}
+                    </ul>
+                </motion.div>
+            )}
+
+            {/* Story Cards */}
+            {cards.length > 0 && (
+                <div className="grid md:grid-cols-2 gap-4">
+                    {cards.map((card, idx) => (
+                        <motion.div
+                            key={idx}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100"
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <h5 className="text-lg font-semibold text-slate-800">{card.title}</h5>
+                                {card.day && <span className="text-xs px-2 py-1 bg-primary-50 text-primary-600 rounded-full border border-primary-100">Day {card.day}</span>}
+                            </div>
+                            <p className="text-slate-600 text-sm mb-2 leading-relaxed">{card.body}</p>
+                            <div className="flex flex-wrap gap-2">
+                                {(card.tags || []).map(tag => (
+                                    <span key={tag} className="px-2 py-0.5 text-xs bg-slate-100 text-slate-600 rounded-full border border-slate-200">#{tag}</span>
+                                ))}
+                            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            )}
 
             {/* Action Buttons */}
             <motion.div

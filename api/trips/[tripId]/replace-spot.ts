@@ -30,6 +30,9 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       const roomMembers = await store.getRoomMembers(trip.roomId);
       const constraints = roomMembers.flatMap(m => m.survey?.constraints || []);
       const dislikes = roomMembers.flatMap(m => m.survey?.dislikes || []);
+      const mustHaves = roomMembers.flatMap(m => m.survey?.mustHaves || []);
+      const priorityNicknames = roomMembers.filter(m => m.survey?.priority === 'high').map(m => m.nickname);
+      const conflictReport = trip.conflictReport || null;
       const instagramImportance = Math.round(
         roomMembers.reduce((acc, member) => acc + (member.survey?.instagramImportance ?? 3), 0) /
         Math.max(roomMembers.length, 1)
@@ -44,8 +47,12 @@ async function handler(req: VercelRequest, res: VercelResponse) {
           themeEmphasis: trip.plan.themeEmphasis,
           constraints,
           dislikes,
+          mustHaves,
+          priorityNicknames,
           instagramImportance,
           dayPlanSlots: dayPlan.slots,
+          consensus: conflictReport?.consensus,
+          conflicts: conflictReport?.conflicts,
         }
       );
 

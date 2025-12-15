@@ -23,17 +23,15 @@ if [ ! -d "odysai-frontend/node_modules" ]; then
 fi
 
 echo ""
-echo "Starting servers..."
-echo "  Backend:  http://localhost:3001"
+echo "Starting servers (frontend only; using Vercel serverless /api)"
 echo "  Frontend: http://localhost:3000"
 echo ""
 echo "Press Ctrl+C to stop both servers"
 echo ""
 
 # Start both servers in background and wait
-trap 'kill %1; kill %2; exit' SIGINT SIGTERM
+trap 'kill %1; exit' SIGINT SIGTERM
 
-cd odysai-backend && npm run dev &
 cd odysai-frontend && npm run dev &
 
 wait

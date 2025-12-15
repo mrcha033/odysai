@@ -69,51 +69,24 @@ odysai/
 
 ### Installation
 
-1. **Install backend dependencies:**
-
-```bash
-cd odysai-backend
-npm install
-```
-
-2. **Configure environment** (odysai-backend/.env):
-
-```bash
-GEMINI_API_KEY=your_google_gemini_api_key
-GEMINI_MODEL=gemini-1.5-flash-latest
-PORT=3001
-```
-
-3. **Install frontend dependencies:**
+1. **Install frontend dependencies:**
 
 ```bash
 cd odysai-frontend
 npm install
 ```
+
+2. **(Optional) Local serverless API proxy**
+
+The Vite dev server proxies `/api` to `localhost:3001` if you run a local backend. For the POC we rely on Vercel serverless `/api` and do not run the Node backend.
 
 ### Running the Application
 
-You need to run **three services**:
-
-**Terminal 1 - Backend:**
-
 ```bash
-cd odysai-backend
-npm run dev
+./start-dev.sh
 ```
 
-The backend will start on `http://localhost:3001`
-
-**Terminal 2 - Frontend:**
-
-```bash
-cd odysai-frontend
-npm run dev
-```
-
-The frontend will start on `http://localhost:3000`
-
-Open your browser to `http://localhost:3000` to use the application.
+This starts the frontend at `http://localhost:3000` and uses `/api` (Vercel serverless) for all API calls.
 
 **📖 For AI setup details, see [AI_INTEGRATION.md](./AI_INTEGRATION.md)**
 
