@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Calendar, Share2, Home, Star, Award, Heart } from 'lucide-react';
+import { MapPin, Calendar, Share2, Home, Star, Award, Heart, Image as ImageIcon } from 'lucide-react';
 import { api } from '../api';
 import { Trip, TripReport } from '../types';
 
@@ -10,6 +10,8 @@ export default function TripReport() {
     const navigate = useNavigate();
     const [trip, setTrip] = useState<Trip | null>(null);
     const [report, setReport] = useState<TripReport | null>(null);
+    const [heroImage, setHeroImage] = useState<string | null>(null);
+    const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
     useEffect(() => {
         const roomId = localStorage.getItem('roomId');
@@ -25,6 +27,9 @@ export default function TripReport() {
                 setTrip(status.trip);
                 if (status.trip.report) {
                     setReport(status.trip.report);
+                    if (status.trip.report.heroImageData) {
+                        setHeroImage(status.trip.report.heroImageData);
+                    }
                 }
             }
         } catch (error) {
@@ -40,6 +45,21 @@ export default function TripReport() {
             </div>
         );
     }
+
+    const handleGenerateImage = async () => {
+        if (!trip) return;
+        setIsGeneratingImage(true);
+        try {
+            const res = await api.generateReportImage(trip.id);
+            if (res?.imageData) {
+                setHeroImage(res.imageData);
+            }
+        } catch (error) {
+            console.error('Failed to generate image:', error);
+        } finally {
+            setIsGeneratingImage(false);
+        }
+    };
 
     const cards = report?.cards || [];
     const highlights = report?.highlights || [];
@@ -62,6 +82,25 @@ export default function TripReport() {
                 </motion.div>
                 <h2 className="text-4xl font-bold text-slate-800">Trip Completed! 🏆</h2>
                 <p className="text-slate-500 text-lg">{report?.summary || "Here's a summary of your amazing journey"}</p>
+            </div>
+
+            {/* Hero Image */}
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                {heroImage ? (
+                    <img src={heroImage} alt="Trip hero" className="w-full max-h-[420px] object-cover" />
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-10 text-slate-500">
+                        <ImageIcon size={32} className="mb-3" />
+                        <p className="mb-3">No hero image yet. Generate one?</p>
+                        <button
+                            onClick={handleGenerateImage}
+                            disabled={isGeneratingImage}
+                            className="btn btn-primary flex items-center gap-2 disabled:opacity-60"
+                        >
+                            {isGeneratingImage ? 'Generating...' : 'Generate Hero Image'}
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Trip Summary Card */}

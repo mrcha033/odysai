@@ -98,4 +98,5 @@ export interface TripReport {
   highlights: string[];
   cards: TripReportCard[];
   shareUrl?: string;
+  heroImageData?: string;
 }

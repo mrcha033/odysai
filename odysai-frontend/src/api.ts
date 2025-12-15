@@ -125,4 +125,11 @@ export const api = {
     const res = await fetch(`${API_BASE}/rooms/${roomId}/preferences/conflicts`);
     return res.json();
   },
+
+  async generateReportImage(tripId: string): Promise<{ imageData: string }> {
+    const res = await fetch(`${API_BASE}/trips/${tripId}/report-image`, {
+      method: 'POST',
+    });
+    return res.json();
+  },
 };

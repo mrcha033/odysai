@@ -42,10 +42,12 @@ type ReplacementSchemaResult = {
 export class AIService {
   private readonly apiKey?: string;
   private readonly model: string;
+  private readonly imageModel: string;
 
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY;
     this.model = process.env.GEMINI_MODEL || 'gemini-1.5-flash-latest';
+    this.imageModel = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image';
   }
 
   async generateInitialPackages(
@@ -140,6 +142,29 @@ export class AIService {
       console.warn('[ai] replaceSpot fallback used:', (error as Error).message);
       return this.generateFallbackAlternatives(currentSlot, reason, context.location);
     }
+  }
+
+  async generateReportImage(prompt: string): Promise<string> {
+    if (!this.apiKey) {
+      throw new Error('GEMINI_API_KEY is missing');
+    }
+    const genAI = new GoogleGenerativeAI(this.apiKey);
+    const model = genAI.getGenerativeModel({
+      model: this.imageModel,
+      generationConfig: {
+        responseMimeType: 'image/png',
+      },
+    });
+
+    const result = await model.generateContent([{ text: prompt }]);
+    const candidates: any[] = (result as any)?.response?.candidates || [];
+    const part = candidates[0]?.content?.parts?.find((p: any) => p.inlineData);
+    const inline = part?.inlineData;
+    if (!inline?.data) {
+      throw new Error('No image data returned');
+    }
+    const mime = inline.mimeType || 'image/png';
+    return `data:${mime};base64,${inline.data}`;
   }
 
   // --- Prompt builders ----------------------------------------------------
