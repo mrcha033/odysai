@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, RefreshCw, X, AlertCircle, Calendar, ArrowRight } from 'lucide-react';
+import { Clock, RefreshCw, X, AlertCircle, Calendar, ArrowRight, Map, CheckCircle2, Circle } from 'lucide-react';
 import { api } from '../api';
 import { Trip, ActivitySlot } from '../types';
 
@@ -19,6 +19,9 @@ export default function TripLobby() {
   const [feedbackInput, setFeedbackInput] = useState('');
   const [photoAddInput, setPhotoAddInput] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
+  const [completedSlots, setCompletedSlots] = useState<string[]>([]);
+  const [now, setNow] = useState(new Date());
+  const [city, setCity] = useState('');
 
   useEffect(() => {
     const storedRoomId = localStorage.getItem('roomId');
@@ -27,11 +30,27 @@ export default function TripLobby() {
     } else if (tripId) {
       loadTripDataByTrip(tripId);
     }
+
+    // Update time every minute
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
   }, [tripId]);
+
+  useEffect(() => {
+    if (trip?.id) {
+      const stored = localStorage.getItem(`trip_progress_${trip.id}`);
+      if (stored) {
+        setCompletedSlots(JSON.parse(stored));
+      }
+    }
+  }, [trip?.id]);
 
   const loadTripDataByRoom = async (roomId: string) => {
     try {
       const status = await api.getRoomStatus(roomId);
+      if (status.room) {
+        setCity(status.room.city);
+      }
       if (status.trip) {
         setTrip(status.trip);
         if (status.trip.photos) setPhotos(status.trip.photos);
@@ -49,6 +68,13 @@ export default function TripLobby() {
         setTrip(tripData);
         if (tripData.photos) setPhotos(tripData.photos);
         localStorage.setItem('roomId', tripData.roomId);
+        // If tripData doesn't contain room city, we might need another call, 
+        // but for now we'll assume the title is descriptive enough or 
+        // try to fetch room if roomId exists.
+        if (tripData.roomId) {
+          const status = await api.getRoomStatus(tripData.roomId);
+          if (status.room) setCity(status.room.city);
+        }
       }
     } catch (error) {
       console.error('Failed to load trip by id:', error);
@@ -133,6 +159,37 @@ export default function TripLobby() {
     }
   };
 
+  const toggleSlotCompletion = (slotId: string) => {
+    if (!trip?.id) return;
+    const newCompleted = completedSlots.includes(slotId)
+      ? completedSlots.filter(id => id !== slotId)
+      : [...completedSlots, slotId];
+
+    setCompletedSlots(newCompleted);
+    localStorage.setItem(`trip_progress_${trip.id}`, JSON.stringify(newCompleted));
+  };
+
+  const getSlotTimeStatus = (day: number, timeStr: string, durationMin: number) => {
+    if (!trip) return 'future';
+
+    // Very simple logic: assume day 1 is today for demo purposes if dates aren't parsed
+    // Or strictly rely on trip.currentDay
+    if (day < trip.currentDay) return 'past';
+    if (day > trip.currentDay) return 'future';
+
+    // Parse time "10:00"
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const slotStart = new Date(now);
+    slotStart.setHours(hours, minutes, 0, 0);
+
+    const slotEnd = new Date(slotStart);
+    slotEnd.setMinutes(slotStart.getMinutes() + durationMin);
+
+    if (now >= slotEnd) return 'past';
+    if (now >= slotStart && now < slotEnd) return 'current';
+    return 'future';
+  };
+
   if (!trip) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4">
@@ -192,50 +249,86 @@ export default function TripLobby() {
             </h4>
 
             <div className="space-y-4">
-              {day.slots.map((slot, slotIndex) => (
-                <motion.div
-                  key={slot.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: dayIndex * 0.1 + slotIndex * 0.05 }}
-                  className={`card p-4 hover:shadow-md transition-shadow group ${dragging ? 'opacity-90 border-dashed border-slate-200' : ''}`}
-                  draggable
-                  onDragStart={() => handleDragStart(day.day, slotIndex)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => { e.preventDefault(); handleDrop(day.day, slotIndex); }}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="min-w-[80px] text-sm font-medium text-slate-500 flex flex-col items-center bg-slate-50 p-2 rounded-lg">
-                      <Clock size={16} className="mb-1 text-slate-400" />
-                      {slot.time}
-                      <span className="text-xs text-slate-400">{slot.duration}m</span>
-                    </div>
+              {day.slots.map((slot, slotIndex) => {
+                const isCompleted = completedSlots.includes(slot.id);
+                const timeStatus = getSlotTimeStatus(day.day, slot.time, slot.duration);
+                const isCurrent = timeStatus === 'current' && !isCompleted;
 
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-start justify-between">
-                        <h5 className="font-bold text-slate-800 text-lg">{slot.title}</h5>
+                return (
+                  <motion.div
+                    key={slot.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: dayIndex * 0.1 + slotIndex * 0.05 }}
+                    className={`card p-4 transition-all group ${dragging ? 'opacity-90 border-dashed border-slate-200' : ''} 
+                      ${isCurrent ? 'ring-2 ring-primary-400 shadow-lg shadow-primary-100 scale-[1.02]' : 'hover:shadow-md'}
+                      ${isCompleted ? 'opacity-60 bg-slate-50' : 'bg-white'}
+                    `}
+                    draggable
+                    onDragStart={() => handleDragStart(day.day, slotIndex)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => { e.preventDefault(); handleDrop(day.day, slotIndex); }}
+                  >
+                    {isCurrent && (
+                      <div className="absolute -top-3 left-4 bg-primary-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-sm">
+                        Happening Now
+                      </div>
+                    )}
+
+                    <div className="flex items-start gap-4">
+                      {/* Interactive Time Column */}
+                      <div className="flex flex-col items-center gap-2">
+                        <div className={`min-w-[80px] text-sm font-medium flex flex-col items-center p-2 rounded-lg ${isCurrent ? 'bg-primary-50 text-primary-700' : 'bg-slate-50 text-slate-500'}`}>
+                          <Clock size={16} className={`mb-1 ${isCurrent ? 'text-primary-500' : 'text-slate-400'}`} />
+                          {slot.time}
+                          <span className={`text-xs ${isCurrent ? 'text-primary-400' : 'text-slate-400'}`}>{slot.duration}m</span>
+                        </div>
+
                         <button
-                          onClick={() => handleReplaceSpot(slot, day.day)}
-                          className="text-slate-400 hover:text-primary-600 transition-colors p-1 rounded-full hover:bg-primary-50 opacity-0 group-hover:opacity-100"
-                          title="Find alternative"
+                          onClick={() => toggleSlotCompletion(slot.id)}
+                          className={`p-1 rounded-full transition-colors ${isCompleted ? 'text-green-500 hover:text-green-600' : 'text-slate-300 hover:text-primary-500'}`}
                         >
-                          <RefreshCw size={18} />
+                          {isCompleted ? <CheckCircle2 size={24} /> : <Circle size={24} />}
                         </button>
                       </div>
 
-                      <p className="text-slate-600 text-sm leading-relaxed">{slot.description}</p>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <h5 className={`font-bold text-lg ${isCompleted ? 'text-slate-500 line-through decoration-slate-300' : 'text-slate-800'}`}>
+                            {slot.title}
+                          </h5>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(slot.title + ' ' + city)}`, '_blank')}
+                              className="text-slate-400 hover:text-blue-500 transition-colors p-2 rounded-full hover:bg-blue-50"
+                              title="Get Directions"
+                            >
+                              <Map size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleReplaceSpot(slot, day.day)}
+                              className="text-slate-400 hover:text-primary-600 transition-colors p-2 rounded-full hover:bg-primary-50"
+                              title="Find alternative"
+                            >
+                              <RefreshCw size={18} />
+                            </button>
+                          </div>
+                        </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        {slot.tags.map(tag => (
-                          <span key={tag} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-full font-medium border border-slate-200">
-                            #{tag}
-                          </span>
-                        ))}
+                        <p className="text-slate-600 text-sm leading-relaxed">{slot.description}</p>
+
+                        <div className="flex flex-wrap gap-2">
+                          {slot.tags.map(tag => (
+                            <span key={tag} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-full font-medium border border-slate-200">
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </div>
           </motion.div>
         ))}
