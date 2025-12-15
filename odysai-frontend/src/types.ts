@@ -67,6 +67,7 @@ export interface Trip {
   startDate: string;
   currentDay: number;
   report?: TripReport;
+  photos?: string[];
 }
 
 export interface RoomStatus {

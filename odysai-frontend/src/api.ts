@@ -132,4 +132,18 @@ export const api = {
     });
     return res.json();
   },
+
+  async addTripPhoto(tripId: string, url: string): Promise<{ photos: string[] }> {
+    const res = await fetch(`${API_BASE}/trips/${tripId}/photos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    return res.json();
+  },
+
+  async getTripPhotos(tripId: string): Promise<{ photos: string[] }> {
+    const res = await fetch(`${API_BASE}/trips/${tripId}/photos`);
+    return res.json();
+  },
 };

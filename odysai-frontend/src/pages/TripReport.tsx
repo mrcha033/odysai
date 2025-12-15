@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MapPin, Calendar, Share2, Home, Star, Award, Heart, Image as ImageIcon } from 'lucide-react';
 import { api } from '../api';
-import { Trip, TripReport } from '../types';
+import type { Trip, TripReport } from '../types';
 
 export default function TripReport() {
     const { tripId } = useParams<{ tripId: string }>();

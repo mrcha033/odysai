@@ -67,6 +67,7 @@ export interface Trip {
   currentDay: number;
   conflictReport?: ConflictReport;
   report?: TripReport;
+  photos?: string[];
 }
 
 export interface RoomStatus {

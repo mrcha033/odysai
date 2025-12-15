@@ -17,6 +17,8 @@ export default function TripLobby() {
   const [dayEmotionsInput, setDayEmotionsInput] = useState('');
   const [photoUrlsInput, setPhotoUrlsInput] = useState('');
   const [feedbackInput, setFeedbackInput] = useState('');
+  const [photoAddInput, setPhotoAddInput] = useState('');
+  const [photos, setPhotos] = useState<string[]>([]);
 
   useEffect(() => {
     const roomId = localStorage.getItem('roomId');
@@ -29,6 +31,7 @@ export default function TripLobby() {
     const status = await api.getRoomStatus(roomId);
     if (status.trip) {
       setTrip(status.trip);
+      if (status.trip.photos) setPhotos(status.trip.photos);
     }
   };
 
@@ -98,6 +101,17 @@ export default function TripLobby() {
       .split(',')
       .map(s => s.trim())
       .filter(Boolean);
+
+  const handleAddPhoto = async () => {
+    if (!trip || !photoAddInput.trim()) return;
+    try {
+      const res = await api.addTripPhoto(trip.id, photoAddInput.trim());
+      setPhotos(res.photos || []);
+      setPhotoAddInput('');
+    } catch (error) {
+      console.error('Failed to add photo:', error);
+    }
+  };
 
   if (!trip) {
     return (
@@ -209,6 +223,31 @@ export default function TripLobby() {
 
       <div className="flex justify-center pt-8 pb-12">
         <div className="w-full max-w-3xl bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700">여행 사진 URL 추가</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={photoAddInput}
+                onChange={(e) => setPhotoAddInput(e.target.value)}
+                placeholder="https://example.com/photo.jpg"
+                className="input flex-1"
+              />
+              <button
+                onClick={handleAddPhoto}
+                className="btn btn-secondary"
+              >
+                Add
+              </button>
+            </div>
+            {photos.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto py-2">
+                {photos.map((p, idx) => (
+                  <img key={idx} src={p} alt="trip" className="w-20 h-20 object-cover rounded-lg border border-slate-200" />
+                ))}
+              </div>
+            )}
+          </div>
           <h4 className="text-lg font-semibold text-slate-800">Trip wrap-up</h4>
           <div className="grid md:grid-cols-3 gap-4">
             <div className="md:col-span-2 space-y-2">
