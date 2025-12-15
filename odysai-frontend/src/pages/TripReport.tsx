@@ -188,7 +188,7 @@ export default function TripReport() {
                             className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100"
                         >
                             <div className="flex items-center justify-between mb-2">
-                                <h5 className="text-lg font-semibold text-slate-800">{card.title}</h5>
+                    <h5 className="text-lg font-semibold text-slate-800">{card.title}</h5>
                                 {card.day && <span className="text-xs px-2 py-1 bg-primary-50 text-primary-600 rounded-full border border-primary-100">Day {card.day}</span>}
                             </div>
                             <p className="text-slate-600 text-sm mb-2 leading-relaxed">{card.body}</p>

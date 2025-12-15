@@ -21,17 +21,37 @@ export default function TripLobby() {
   const [photos, setPhotos] = useState<string[]>([]);
 
   useEffect(() => {
-    const roomId = localStorage.getItem('roomId');
-    if (roomId) {
-      loadTripData(roomId);
+    const storedRoomId = localStorage.getItem('roomId');
+    if (storedRoomId) {
+      loadTripDataByRoom(storedRoomId);
+    } else if (tripId) {
+      loadTripDataByTrip(tripId);
     }
   }, [tripId]);
 
-  const loadTripData = async (roomId: string) => {
-    const status = await api.getRoomStatus(roomId);
-    if (status.trip) {
-      setTrip(status.trip);
-      if (status.trip.photos) setPhotos(status.trip.photos);
+  const loadTripDataByRoom = async (roomId: string) => {
+    try {
+      const status = await api.getRoomStatus(roomId);
+      if (status.trip) {
+        setTrip(status.trip);
+        if (status.trip.photos) setPhotos(status.trip.photos);
+        localStorage.setItem('roomId', status.trip.roomId);
+      }
+    } catch (error) {
+      console.error('Failed to load trip by room:', error);
+    }
+  };
+
+  const loadTripDataByTrip = async (tripIdParam: string) => {
+    try {
+      const tripData = await api.getTrip(tripIdParam);
+      if (tripData) {
+        setTrip(tripData);
+        if (tripData.photos) setPhotos(tripData.photos);
+        localStorage.setItem('roomId', tripData.roomId);
+      }
+    } catch (error) {
+      console.error('Failed to load trip by id:', error);
     }
   };
 
@@ -224,7 +244,7 @@ export default function TripLobby() {
       <div className="flex justify-center pt-8 pb-12">
         <div className="w-full max-w-3xl bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">여행 사진 URL 추가</label>
+            <label className="text-sm font-medium text-slate-700">Add trip photo URL</label>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -256,7 +276,7 @@ export default function TripLobby() {
                 type="text"
                 value={dayEmotionsInput}
                 onChange={(e) => setDayEmotionsInput(e.target.value)}
-                placeholder="e.g., 설렘, 피곤 but happy, 힐링"
+                placeholder="e.g., excited, tired but happy, relaxed"
                 className="input"
               />
             </div>
@@ -284,7 +304,7 @@ export default function TripLobby() {
             <button
               onClick={async () => {
                 if (!trip) return;
-                if (window.confirm('완료하시겠어요? 보고서가 생성됩니다.')) {
+                if (window.confirm('Complete the trip and generate the report?')) {
                   await api.completeTrip(trip.id, {
                     dayEmotions: parseList(dayEmotionsInput),
                     photos: parseList(photoUrlsInput),

@@ -177,7 +177,7 @@ export default function Survey() {
 
         <div className="card p-6 space-y-4">
           <label className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-            여행 목적
+            Trip Purpose
           </label>
           <div className="flex flex-wrap gap-2">
             {purposeOptions.map(option => (
@@ -198,7 +198,7 @@ export default function Survey() {
 
         <div className="card p-6 space-y-4">
           <div className="flex flex-col gap-2">
-            <label className="text-lg font-semibold text-slate-800">체력/이동 선호</label>
+            <label className="text-lg font-semibold text-slate-800">Energy / Mobility Preference</label>
             <div className="flex gap-3">
               {['low', 'medium', 'high'].map(level => (
                 <button
@@ -207,12 +207,12 @@ export default function Survey() {
                   onClick={() => setStaminaLevel(level as any)}
                   className={`px-4 py-2 rounded-xl border ${staminaLevel === level ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white border-slate-200 text-slate-600'}`}
                 >
-                  {level === 'low' ? '차분히' : level === 'medium' ? '보통' : '활동적'}
+                  {level === 'low' ? 'Take it slow' : level === 'medium' ? 'Balanced' : 'Active'}
                 </button>
               ))}
             </div>
             <div>
-              <label className="text-sm text-slate-600">최대 이동 시간 (분)</label>
+              <label className="text-sm text-slate-600">Max travel time (minutes)</label>
               <input
                 type="range"
                 min="10"
@@ -222,15 +222,15 @@ export default function Survey() {
                 onChange={(e) => setMaxTravelMinutes(parseInt(e.target.value))}
                 className="w-full accent-primary-500"
               />
-              <div className="text-sm text-slate-500 mt-1">{maxTravelMinutes}분 내 이동 선호</div>
+              <div className="text-sm text-slate-500 mt-1">Prefer moves within {maxTravelMinutes} minutes</div>
             </div>
             <div>
-              <label className="text-sm text-slate-600">Must-have (쉼표로 구분)</label>
+              <label className="text-sm text-slate-600">Must-have (comma separated)</label>
               <input
                 type="text"
                 value={mustHavesInput}
                 onChange={(e) => setMustHavesInput(e.target.value)}
-                placeholder="예: 스파, 야경, 로컬 맛집"
+                placeholder="e.g., spa, night view, local food"
                 className="input"
               />
             </div>

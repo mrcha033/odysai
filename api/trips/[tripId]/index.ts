@@ -9,6 +9,12 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   const { tripId } = req.query;
   const { method } = req;
 
+  if (method === 'GET') {
+    const trip = await store.getTrip(tripId as string);
+    if (!trip) return res.status(404).json({ error: 'Trip not found' });
+    return res.status(200).json(trip);
+  }
+
   if (method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

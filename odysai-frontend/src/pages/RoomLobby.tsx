@@ -44,6 +44,7 @@ export default function RoomLobby() {
 
     const member = await api.joinRoom(roomId, nickname);
     localStorage.setItem('memberId', member.id);
+    localStorage.setItem('roomId', roomId);
     setCurrentMember(member);
     setShowJoinForm(false);
     loadRoomStatus();

@@ -21,7 +21,7 @@ export default function CreateRoom() {
       const room = await api.createRoom({
         city,
         dateRange: { start: startDate, end: endDate },
-        theme: ['여행'],
+      theme: ['travel'],
         travelerCount,
       });
 

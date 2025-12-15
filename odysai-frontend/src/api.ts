@@ -151,11 +151,12 @@ export const api = {
   },
 
   async getTripPhotos(tripId: string): Promise<{ photos: string[] }> {
-    const res = await fetch(`${API_BASE}/trips/${tripId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'photo-list' }),
-    });
+    const res = await fetch(`${API_BASE}/trips/${tripId}`);
+    return res.json();
+  },
+
+  async getTrip(tripId: string) {
+    const res = await fetch(`${API_BASE}/trips/${tripId}`);
     return res.json();
   },
 };
