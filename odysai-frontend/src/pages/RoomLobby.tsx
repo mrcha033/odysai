@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, Check, User, MapPin, Calendar, ArrowRight, Sparkles } from 'lucide-react';
+import { Copy, Check, User, MapPin, Calendar, ArrowRight, Sparkles, Rocket } from 'lucide-react';
 import { api } from '../api';
 import { RoomStatus, Member } from '../types';
 
@@ -12,7 +12,14 @@ export default function RoomLobby() {
   const [nickname, setNickname] = useState('');
   const [showJoinForm, setShowJoinForm] = useState(false);
   const [currentMember, setCurrentMember] = useState<Member | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [showCopyToast, setShowCopyToast] = useState(false);
+  const [isAutoStarting, setIsAutoStarting] = useState(false);
+
+  useEffect(() => {
+    // Smart Default: Pre-fill nickname
+    const saved = localStorage.getItem('userNickname');
+    if (saved) setNickname(saved);
+  }, []);
 
   useEffect(() => {
     loadRoomStatus();
@@ -25,6 +32,14 @@ export default function RoomLobby() {
     if (memberId && status) {
       const member = status.members.find(m => m.id === memberId);
       setCurrentMember(member || null);
+
+      // Auto-Start Logic: Check if everyone is ready
+      if (status.members.length > 0 &&
+        status.members.length >= status.room.travelerCount &&
+        status.members.every(m => m.isReady) &&
+        !isAutoStarting) {
+        handleAutoStart();
+      }
     }
   }, [status]);
 
@@ -33,14 +48,45 @@ export default function RoomLobby() {
     const data = await api.getRoomStatus(roomId);
     setStatus(data);
 
-    if (data.trip) {
+    if (data.trip && !isAutoStarting) {
       navigate(`/trip/${data.trip.id}`);
+    }
+  };
+
+  const handleAutoStart = async () => {
+    if (!roomId || isAutoStarting) return;
+
+    setIsAutoStarting(true);
+
+    try {
+      // 1. Get votes to determine winner
+      const voteData = await api.getVotes(roomId);
+      const winnerPlanId = voteData?.winnerPlanId;
+
+      if (winnerPlanId) {
+        // 2. Start the trip
+        await api.startTrip(roomId, winnerPlanId);
+        // Navigation will be handled by the next poll or api response, 
+        // but we can also manually push if api returns tripId instantly.
+        const updatedStatus = await api.getRoomStatus(roomId);
+        if (updatedStatus.trip) {
+          navigate(`/trip/${updatedStatus.trip.id}`);
+        }
+      } else {
+        console.error("No winner plan found despite everyone being ready.");
+        setIsAutoStarting(false);
+      }
+    } catch (error) {
+      console.error("Auto-start failed:", error);
+      setIsAutoStarting(false);
     }
   };
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomId) return;
+
+    localStorage.setItem('userNickname', nickname); // Save for future
 
     const member = await api.joinRoom(roomId, nickname);
     localStorage.setItem('memberId', member.id);
@@ -72,192 +118,277 @@ export default function RoomLobby() {
 
   const copyLink = () => {
     navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setShowCopyToast(true);
+    setTimeout(() => setShowCopyToast(false), 3000);
   };
 
   if (!status) {
+    // Skeleton Loading
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-pulse text-primary-600 font-medium">Loading room details...</div>
+      <div className="space-y-8 animate-pulse max-w-2xl mx-auto pt-10 px-4">
+        <div className="text-center space-y-4">
+          <div className="h-10 bg-slate-200 rounded-lg w-2/3 mx-auto"></div>
+          <div className="h-6 bg-slate-200 rounded-lg w-1/3 mx-auto"></div>
+        </div>
+        <div className="card p-6 space-y-6">
+          <div className="flex justify-between">
+            <div className="h-6 bg-slate-200 rounded w-1/4"></div>
+            <div className="h-8 bg-slate-200 rounded-full w-1/4"></div>
+          </div>
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-16 bg-slate-100 rounded-xl w-full"></div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
-  const canGeneratePlans = status.members.every(m => m.surveyCompleted) && status.members.length > 0;
+  const canGeneratePlans =
+    status.members.length >= status.room.travelerCount &&
+    status.members.every(m => m.surveyCompleted);
   const hasPlans = status.planPackages && status.planPackages.length > 0;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-8"
-    >
-      <div className="text-center space-y-4">
-        <h2 className="text-3xl font-bold text-slate-800 flex items-center justify-center gap-3">
-          <MapPin className="text-primary-500" />
-          {status.room.city} Trip
-        </h2>
-        <div className="flex items-center justify-center gap-2 text-slate-500">
-          <Calendar size={18} />
-          <span>{status.room.dateRange.start} ~ {status.room.dateRange.end}</span>
-        </div>
-      </div>
-
-      <div className="card p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-slate-700">Travelers ({status.members.length})</h3>
-          <button
-            onClick={copyLink}
-            className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 transition-colors bg-primary-50 px-3 py-1.5 rounded-full"
-          >
-            {copied ? <Check size={16} /> : <Copy size={16} />}
-            {copied ? 'Copied!' : 'Invite Link'}
-          </button>
-        </div>
-
-        <div className="grid gap-3">
-          <AnimatePresence>
-            {status.members.map(member => (
-              <motion.div
-                key={member.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center border border-slate-200 text-slate-400">
-                    <User size={20} />
-                  </div>
-                  <div>
-                    <span className="font-medium text-slate-700 flex items-center gap-2">
-                      {member.nickname}
-                      {member.id === currentMember?.id && (
-                        <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">You</span>
-                      )}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {member.surveyCompleted ? (
-                    <span className="text-xs font-medium bg-green-100 text-green-700 px-2.5 py-1 rounded-full flex items-center gap-1">
-                      <Check size={12} /> Survey Done
-                    </span>
-                  ) : (
-                    <span className="text-xs font-medium bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full">
-                      Pending Survey
-                    </span>
-                  )}
-                  {member.isReady && (
-                    <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full">
-                      READY
-                    </span>
-                  )}
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-
-        {!currentMember && !showJoinForm && (
+    <>
+      <AnimatePresence>
+        {isAutoStarting && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="mt-6 text-center"
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-white/95 backdrop-blur-md z-[60] flex flex-col items-center justify-center space-y-8"
           >
-            <button onClick={() => setShowJoinForm(true)} className="btn btn-primary w-full">
-              Join This Trip
-            </button>
+            <div className="relative">
+              <div className="absolute inset-0 bg-primary-200 rounded-full animate-ping opacity-25"></div>
+              <div className="bg-primary-50 p-6 rounded-full relative z-10">
+                <Rocket size={64} className="text-primary-600 animate-bounce" />
+              </div>
+            </div>
+            <div className="text-center space-y-2 max-w-md px-4">
+              <h3 className="text-2xl font-bold text-slate-800">Everyone is Ready!</h3>
+              <p className="text-slate-500 text-lg">Launching your adventure based on the group's vote...</p>
+            </div>
           </motion.div>
         )}
+      </AnimatePresence>
 
-        {showJoinForm && (
-          <motion.form
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            onSubmit={handleJoin}
-            className="mt-6 space-y-4"
+      <AnimatePresence>
+        {showCopyToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-3"
           >
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nickname</label>
-              <input
-                type="text"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                placeholder="Enter your nickname"
-                className="input"
-                required
-              />
+            <div className="bg-green-500 rounded-full p-1">
+              <Check size={12} strokeWidth={3} />
             </div>
-            <button type="submit" className="btn btn-primary w-full">Join Now</button>
-          </motion.form>
+            <span className="font-medium">Link copied! Share it with your friends.</span>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
 
-      {currentMember && (
-        <div className="space-y-4">
-          {!currentMember.surveyCompleted && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-blue-50 border border-blue-100 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4"
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-8"
+      >
+        <div className="text-center space-y-4">
+          <h2 className="text-3xl font-bold text-slate-800 flex items-center justify-center gap-3">
+            <MapPin className="text-primary-500" />
+            {status.room.city} Trip
+          </h2>
+          <div className="flex items-center justify-center gap-2 text-slate-500">
+            <Calendar size={18} />
+            <span>{status.room.dateRange.start} ~ {status.room.dateRange.end}</span>
+          </div>
+        </div>
+
+        <div className="card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-slate-700">Travelers ({status.members.length})</h3>
+            <button
+              onClick={copyLink}
+              className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 transition-colors bg-primary-50 hover:bg-primary-100 px-4 py-2 rounded-full font-medium"
             >
-              <div>
-                <h4 className="text-lg font-semibold text-blue-900">Tell us your preferences!</h4>
-                <p className="text-blue-700">Complete the survey to help AI plan the perfect trip.</p>
-              </div>
-              <button onClick={handleStartSurvey} className="btn bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200">
-                Start Survey
+              <Copy size={16} />
+              Invite Friends
+            </button>
+          </div>
+
+          <div className="grid gap-3">
+            <AnimatePresence>
+              {status.members.map(member => (
+                <motion.div
+                  key={member.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center border border-slate-200 text-slate-400">
+                      <User size={20} />
+                    </div>
+                    <div>
+                      <span className="font-medium text-slate-700 flex items-center gap-2">
+                        {member.nickname}
+                        {member.id === currentMember?.id && (
+                          <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">You</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {member.surveyCompleted ? (
+                      <span className="text-xs font-medium bg-green-100 text-green-700 px-2.5 py-1 rounded-full flex items-center gap-1">
+                        <Check size={12} /> Survey Done
+                      </span>
+                    ) : (
+                      <span className="text-xs font-medium bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full">
+                        Pending Survey
+                      </span>
+                    )}
+                    {member.isReady && (
+                      <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full flex items-center gap-1">
+                        <Rocket size={12} /> READY
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+
+          {!currentMember && !showJoinForm && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-6 text-center"
+            >
+              <button onClick={() => setShowJoinForm(true)} className="btn btn-primary w-full">
+                Join This Trip
               </button>
             </motion.div>
           )}
 
-          {currentMember.surveyCompleted && !hasPlans && canGeneratePlans && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-green-50 border border-green-100 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4"
+          {showJoinForm && (
+            <motion.form
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              onSubmit={handleJoin}
+              className="mt-6 space-y-4"
             >
               <div>
-                <h4 className="text-lg font-semibold text-green-900 flex items-center gap-2">
-                  <Sparkles className="text-green-600" />
-                  Ready to Generate Plans
-                </h4>
-                <p className="text-green-700">Everyone has completed the survey.</p>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nickname</label>
+                <input
+                  type="text"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  placeholder="Enter your nickname"
+                  className="input"
+                  required
+                />
               </div>
-              <button onClick={handleGeneratePlans} className="btn bg-green-600 text-white hover:bg-green-700 shadow-lg shadow-green-200">
-                Generate AI Plans
-              </button>
-            </motion.div>
-          )}
-
-          {hasPlans && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-purple-50 border border-purple-100 rounded-2xl p-6"
-            >
-              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                <div>
-                  <h4 className="text-lg font-semibold text-purple-900">Plans are Ready!</h4>
-                  <p className="text-purple-700">Check out the AI-generated itineraries.</p>
-                </div>
-                <div className="flex gap-3">
-                  <button onClick={handleViewPlans} className="btn btn-primary flex items-center gap-2">
-                    View Plans <ArrowRight size={18} />
-                  </button>
-                  <button
-                    onClick={handleToggleReady}
-                    className={`btn ${currentMember.isReady ? 'bg-slate-200 text-slate-700' : 'bg-white border border-slate-200 text-slate-700'}`}
-                  >
-                    {currentMember.isReady ? 'Cancel Ready' : 'Mark as Ready'}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
+              <button type="submit" className="btn btn-primary w-full">Join Now</button>
+            </motion.form>
           )}
         </div>
-      )}
-    </motion.div>
+
+        {currentMember && (
+          <div className="space-y-4">
+            {!currentMember.surveyCompleted && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-blue-50 border border-blue-100 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4"
+              >
+                <div>
+                  <h4 className="text-lg font-semibold text-blue-900">Tell us your preferences!</h4>
+                  <p className="text-blue-700">Complete the survey to help AI plan the perfect trip.</p>
+                </div>
+                <button onClick={handleStartSurvey} className="btn bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200">
+                  Start Survey
+                </button>
+              </motion.div>
+            )}
+
+            {currentMember.surveyCompleted && !hasPlans && (
+              canGeneratePlans ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-green-50 border border-green-100 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4"
+                >
+                  <div>
+                    <h4 className="text-lg font-semibold text-green-900 flex items-center gap-2">
+                      <Sparkles className="text-green-600" />
+                      Ready to Generate Plans
+                    </h4>
+                    <p className="text-green-700">Everyone has completed the survey.</p>
+                  </div>
+                  <button onClick={handleGeneratePlans} className="btn bg-green-600 text-white hover:bg-green-700 shadow-lg shadow-green-200">
+                    Generate AI Plans
+                  </button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-slate-50 border border-slate-100 rounded-2xl p-6 text-center"
+                >
+                  <div className="flex justify-center mb-2">
+                    <div className="p-3 bg-white rounded-full shadow-sm">
+                      <User className="text-slate-400" />
+                    </div>
+                  </div>
+                  <h4 className="text-lg font-semibold text-slate-700">Waiting for other travelers...</h4>
+                  <p className="text-slate-500 mb-2">
+                    {status.members.length < status.room.travelerCount
+                      ? `Waiting for ${status.room.travelerCount - status.members.length} more person(s) to join.`
+                      : 'Waiting for everyone to complete the survey.'}
+                  </p>
+                  <div className="w-full bg-slate-200 rounded-full h-2 max-w-xs mx-auto overflow-hidden">
+                    <div
+                      className="bg-primary-500 h-full transition-all duration-500"
+                      style={{
+                        width: `${(status.members.filter(m => m.surveyCompleted).length / status.room.travelerCount) * 100}%`
+                      }}
+                    />
+                  </div>
+                </motion.div>
+              )
+            )}
+
+            {hasPlans && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-purple-50 border border-purple-100 rounded-2xl p-6"
+              >
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div>
+                    <h4 className="text-lg font-semibold text-purple-900">Plans are Ready!</h4>
+                    <p className="text-purple-700">Check out the AI-generated itineraries.</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={handleViewPlans} className="btn btn-primary flex items-center gap-2">
+                      View Plans <ArrowRight size={18} />
+                    </button>
+                    <button
+                      onClick={handleToggleReady}
+                      className={`btn ${currentMember.isReady ? 'bg-slate-200 text-slate-700' : 'bg-white border border-slate-200 text-slate-700'}`}
+                    >
+                      {currentMember.isReady ? 'Cancel Ready' : 'Mark as Ready'}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </div>
+        )}
+      </motion.div>
+    </>
   );
 }

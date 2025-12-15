@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MapPin, Calendar, Users, User, ArrowRight } from 'lucide-react';
@@ -13,15 +13,21 @@ export default function CreateRoom() {
   const [nickname, setNickname] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    const saved = localStorage.getItem('userNickname');
+    if (saved) setNickname(saved);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
+      localStorage.setItem('userNickname', nickname);
       const room = await api.createRoom({
         city,
         dateRange: { start: startDate, end: endDate },
-      theme: ['travel'],
+        theme: ['travel'],
         travelerCount,
       });
 
