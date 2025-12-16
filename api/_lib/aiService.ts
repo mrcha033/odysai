@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI, SchemaType, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { v4 as uuidv4 } from 'uuid';
-import { PlanPackage, DayPlan, ActivitySlot, Survey, Room, ConflictReport, PreferenceProfile, ConsensusBand, ConflictItem } from './types';
+import { PlanPackage, DayPlan, ActivitySlot, Survey, Room, ConflictReport, PreferenceProfile, ConsensusBand, ConflictItem, TripReport } from './types';
 
 type ItinerarySchemaResult = {
   packages: Array<{
@@ -150,7 +150,93 @@ export class AIService {
     }
   }
 
-  async generateReportImage(prompt: string): Promise<string> {
+  async generateElaborateTripReport(
+    tripId: string,
+    summaryContext: string,
+    photoUrls: string[]
+  ): Promise<TripReport> {
+    const prompt = `
+      You are a travel influencer and storyteller.
+      Create a visually engaging, social-media-ready trip report for a group trip.
+
+      Context:
+      ${summaryContext}
+
+      Instructions:
+      1. Analyze the provided photos (if any) to infer the vibe, weather, and highlights.
+      2. Write a catchy, viral-worthy summary for the trip.
+      3. Create 3-5 "Story Cards" that look like Instagram posts or travel blog snippets.
+      4. Include relevant hash tags and emoji.
+      5. Extract specific highlights.
+
+      Return structured JSON matching the TripReport schema.
+      {
+        summary: "Social media caption style summary",
+        highlights: ["Highlight 1", "Highlight 2", ...],
+        cards: [
+          { title: "Day 1: Arrival", body: "...", tags: ["#airport", "#excited"], day: 1 },
+          ...
+        ]
+      }
+    `;
+
+    // Fetch images and convert to base64 for inlineData
+    // Note: This is efficient for small numbers of images.
+    // For production with many large images, consider using File API if supported by Gemini SDK in this env.
+    const imageParts: any[] = [];
+    if (photoUrls.length > 0) {
+      try {
+        const fetchImage = async (url: string) => {
+          const resp = await fetch(url);
+          const buffer = await resp.arrayBuffer();
+          return {
+            inlineData: {
+              data: Buffer.from(buffer).toString('base64'),
+              mimeType: resp.headers.get('content-type') || 'image/jpeg',
+            },
+          };
+        };
+        // Limit to top 3 images to avoid payload limits
+        const targetUrls = photoUrls.slice(0, 3);
+        const parts = await Promise.all(targetUrls.map(fetchImage));
+        imageParts.push(...parts);
+      } catch (e) {
+        console.warn('Failed to fetch images for AI analysis:', e);
+      }
+    }
+
+    try {
+      if (!this.apiKey) throw new Error('API Key missing');
+      const genAI = new GoogleGenerativeAI(this.apiKey);
+      // Use the class-level model property (from env) instead of hardcoding
+      const model = genAI.getGenerativeModel({
+        model: this.model,
+        generationConfig: { responseMimeType: 'application/json' }
+      });
+
+      const result = await model.generateContent([prompt, ...imageParts]);
+      const text = result.response.text();
+      const json = JSON.parse(text);
+
+      return {
+        tripId,
+        summary: json.summary || 'Trip Report',
+        highlights: json.highlights || [],
+        cards: json.cards || [],
+      };
+    } catch (error) {
+      console.error('Elaborate report generation failed:', error);
+      // Fallback
+      return {
+        tripId,
+        summary: 'Trip Completed! (AI Generation Failed)',
+        highlights: ['Memories made', 'Good times'],
+        cards: [],
+      };
+    }
+  }
+
+  async generateReportImage(prompt: string, referenceImageUrl?: string): Promise<string> {
     if (!this.apiKey) {
       throw new Error('GEMINI_API_KEY is missing');
     }
@@ -162,7 +248,24 @@ export class AIService {
       },
     });
 
-    const result = await model.generateContent([{ text: prompt }]);
+    const parts: any[] = [{ text: prompt }];
+
+    if (referenceImageUrl) {
+      try {
+        const resp = await fetch(referenceImageUrl);
+        const buffer = await resp.arrayBuffer();
+        parts.push({
+          inlineData: {
+            data: Buffer.from(buffer).toString('base64'),
+            mimeType: resp.headers.get('content-type') || 'image/jpeg',
+          },
+        });
+      } catch (e) {
+        console.warn('[ai] Failed to fetch reference image for generation:', e);
+      }
+    }
+
+    const result = await model.generateContent(parts);
     const candidates: any[] = (result as any)?.response?.candidates || [];
     const part = candidates[0]?.content?.parts?.find((p: any) => p.inlineData);
     const inline = part?.inlineData;

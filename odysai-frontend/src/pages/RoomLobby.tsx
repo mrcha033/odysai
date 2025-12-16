@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Users, User, Calendar, MapPin, Copy, Check, Info, Loader2, Sparkles, AlertTriangle, Rocket, Heart, X, Globe } from 'lucide-react';
+import { ArrowRight, User, Calendar, MapPin, Copy, Check, Loader2, Sparkles, Rocket, Heart, X, Globe } from 'lucide-react';
 import { api } from '../api';
 import { RoomStatus, Member } from '../types';
 
@@ -129,7 +129,7 @@ export default function RoomLobby() {
   const handleAddCandidateWithTitle = async (title: string) => {
     if (!roomId) return;
     try {
-      const { candidates } = await api.addCandidate(roomId, title);
+      await api.addCandidate(roomId, title);
       console.log('Added candidate:', title);
       const updatedStatus = await api.getRoomStatus(roomId);
       setStatus(updatedStatus);

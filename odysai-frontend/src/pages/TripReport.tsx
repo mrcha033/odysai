@@ -85,19 +85,39 @@ export default function TripReport() {
             </div>
 
             {/* Hero Image */}
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                {heroImage ? (
+            {/* Hero Section / Photo Carousel */}
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden relative group">
+                {trip.photos && trip.photos.length > 0 ? (
+                    <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide">
+                        {trip.photos.map((photo, idx) => (
+                            <img
+                                key={idx}
+                                src={photo}
+                                alt={`Trip memory ${idx}`}
+                                className="w-full flex-shrink-0 snap-center max-h-[500px] object-cover"
+                            />
+                        ))}
+                        {/* Hints for multiple photos */}
+                        {trip.photos.length > 1 && (
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1">
+                                {trip.photos.map((_, idx) => (
+                                    <div key={idx} className="w-2 h-2 rounded-full bg-white/80 shadow-sm" />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ) : heroImage ? (
                     <img src={heroImage} alt="Trip hero" className="w-full max-h-[420px] object-cover" />
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-10 text-slate-500">
-                        <ImageIcon size={32} className="mb-3" />
-                        <p className="mb-3">No hero image yet. Generate one?</p>
+                    <div className="flex flex-col items-center justify-center py-10 text-slate-500 bg-slate-50">
+                        <ImageIcon size={32} className="mb-3 opacity-50" />
+                        <p className="mb-3 font-medium">No photos uploaded.</p>
                         <button
                             onClick={handleGenerateImage}
                             disabled={isGeneratingImage}
-                            className="btn btn-primary flex items-center gap-2 disabled:opacity-60"
+                            className="btn btn-secondary flex items-center gap-2 disabled:opacity-60"
                         >
-                            {isGeneratingImage ? 'Generating...' : 'Generate Hero Image'}
+                            {isGeneratingImage ? 'Generating AI Image...' : 'Generate AI Souvenir'}
                         </button>
                     </div>
                 )}
@@ -176,26 +196,45 @@ export default function TripReport() {
                 </motion.div>
             )}
 
-            {/* Story Cards */}
+            {/* Social Feed Style Cards */}
             {cards.length > 0 && (
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid md:grid-cols-2 gap-6">
                     {cards.map((card, idx) => (
                         <motion.div
                             key={idx}
-                            initial={{ opacity: 0, y: 10 }}
+                            initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.05 }}
-                            className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100"
+                            transition={{ delay: idx * 0.1 }}
+                            className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow"
                         >
-                            <div className="flex items-center justify-between mb-2">
-                    <h5 className="text-lg font-semibold text-slate-800">{card.title}</h5>
-                                {card.day && <span className="text-xs px-2 py-1 bg-primary-50 text-primary-600 rounded-full border border-primary-100">Day {card.day}</span>}
+                            <div className="p-4 flex items-center gap-3 border-b border-slate-50">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary-400 to-primary-600 flex items-center justify-center text-white text-xs font-bold">
+                                    AI
+                                </div>
+                                <div>
+                                    <div className="text-sm font-bold text-slate-800">Ody'sai Travel Log</div>
+                                    <div className="text-xs text-slate-400">{trip.plan.days[0]?.slots[0]?.location || 'Traveler'} • Day {card.day || 1}</div>
+                                </div>
                             </div>
-                            <p className="text-slate-600 text-sm mb-2 leading-relaxed">{card.body}</p>
-                            <div className="flex flex-wrap gap-2">
-                                {(card.tags || []).map(tag => (
-                                    <span key={tag} className="px-2 py-0.5 text-xs bg-slate-100 text-slate-600 rounded-full border border-slate-200">#{tag}</span>
-                                ))}
+
+                            <div className="p-5">
+                                <h5 className="text-lg font-bold text-slate-800 mb-2">{card.title}</h5>
+                                <p className="text-slate-600 text-sm mb-4 leading-relaxed whitespace-pre-line">
+                                    {card.body}
+                                </p>
+                                <div className="flex flex-wrap gap-2 text-primary-600 font-medium text-sm">
+                                    {(card.tags || []).map(tag => (
+                                        <span key={tag}>#{tag.replace('#', '')}</span>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="px-4 py-3 bg-slate-50 flex items-center justify-between text-slate-400 text-sm border-t border-slate-100">
+                                <div className="flex gap-4">
+                                    <span className="flex items-center gap-1 hover:text-rose-500 cursor-pointer transition-colors"><Heart size={16} /> 24</span>
+                                    <span className="flex items-center gap-1 hover:text-blue-500 cursor-pointer transition-colors"><Share2 size={16} /> Share</span>
+                                </div>
+                                <span>{new Date().toLocaleDateString()}</span>
                             </div>
                         </motion.div>
                     ))}

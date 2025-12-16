@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, RefreshCw, X, AlertCircle, Calendar, ArrowRight, Map, CheckCircle2, Circle } from 'lucide-react';
+import { Clock, RefreshCw, X, AlertCircle, Calendar, ArrowRight, Map, CheckCircle2, Circle, Upload } from 'lucide-react';
 import { api } from '../api';
 import { Trip, ActivitySlot } from '../types';
 
@@ -18,6 +18,7 @@ export default function TripLobby() {
   const [photoUrlsInput, setPhotoUrlsInput] = useState('');
   const [feedbackInput, setFeedbackInput] = useState('');
   const [photoAddInput, setPhotoAddInput] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
   const [completedSlots, setCompletedSlots] = useState<string[]>([]);
   const [now, setNow] = useState(new Date());
@@ -156,6 +157,23 @@ export default function TripLobby() {
       setPhotoAddInput('');
     } catch (error) {
       console.error('Failed to add photo:', error);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length || !trip) return;
+    setIsUploading(true);
+
+    try {
+      const file = e.target.files[0];
+      const { url } = await api.uploadFile(file);
+      const res = await api.addTripPhoto(trip.id, url);
+      setPhotos(res.photos || []);
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+      alert('Failed to upload photo');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -337,8 +355,9 @@ export default function TripLobby() {
       <div className="flex justify-center pt-8 pb-12">
         <div className="w-full max-w-3xl bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Add trip photo URL</label>
-            <div className="flex gap-2">
+            <label className="text-sm font-medium text-slate-700">Add trip photos</label>
+
+            <div className="flex gap-2 items-center">
               <input
                 type="text"
                 value={photoAddInput}
@@ -348,15 +367,44 @@ export default function TripLobby() {
               />
               <button
                 onClick={handleAddPhoto}
-                className="btn btn-secondary"
+                className="btn btn-secondary whitespace-nowrap"
+                disabled={isUploading}
               >
-                Add
+                Add URL
               </button>
             </div>
+
+            <div className="flex items-center gap-4 py-2">
+              <div className="h-px bg-slate-100 flex-1" />
+              <span className="text-xs text-slate-400 font-medium">OR</span>
+              <div className="h-px bg-slate-100 flex-1" />
+            </div>
+
+            <div className="relative">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                disabled={isUploading}
+              />
+              <div className="btn btn-secondary w-full flex items-center justify-center gap-2 border-dashed border-2 bg-slate-50 hover:bg-slate-100 text-slate-500">
+                {isUploading ? (
+                  <RefreshCw className="animate-spin" size={20} />
+                ) : (
+                  <Upload size={20} />
+                )}
+                {isUploading ? 'Uploading...' : 'Upload Photo from Device'}
+              </div>
+            </div>
+
             {photos.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto py-2">
+              <div className="flex gap-2 overflow-x-auto py-2 pb-4">
                 {photos.map((p, idx) => (
-                  <img key={idx} src={p} alt="trip" className="w-20 h-20 object-cover rounded-lg border border-slate-200" />
+                  <div key={idx} className="relative flex-shrink-0 group">
+                    <img src={p} alt="trip" className="w-20 h-20 object-cover rounded-lg border border-slate-200 shadow-sm" />
+                    <div className="absolute inset-0 bg-black/10 rounded-lg group-hover:bg-black/20 transition-colors" />
+                  </div>
                 ))}
               </div>
             )}
@@ -400,7 +448,7 @@ export default function TripLobby() {
                 if (window.confirm('Complete the trip and generate the report?')) {
                   await api.completeTrip(trip.id, {
                     dayEmotions: parseList(dayEmotionsInput),
-                    photos: parseList(photoUrlsInput),
+                    photos: [...photos, ...parseList(photoUrlsInput)], // Use the actual photos array state
                     feedback: feedbackInput,
                   });
                   window.location.href = `/trip/${trip.id}/report`;

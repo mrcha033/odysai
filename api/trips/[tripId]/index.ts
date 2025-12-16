@@ -90,32 +90,16 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     try {
-      const raw = await aiService.generateStructuredJSON<any>(prompt, {
-        type: 'object',
-        properties: {
-          summary: { type: 'string' },
-          highlights: { type: 'array', items: { type: 'string' } },
-          cards: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                title: { type: 'string' },
-                body: { type: 'string' },
-                tags: { type: 'array', items: { type: 'string' } },
-                day: { type: 'number' },
-              },
-              required: ['title', 'body'],
-            },
-          },
-        },
-        required: ['summary', 'highlights', 'cards'],
-      });
+      // Use the new elaborate report generation if images are present or just as a better default
+      const summaryContext = prompt; // Re-use the context string we built
+      report = await aiService.generateElaborateTripReport(trip.id, summaryContext, photos);
+
+      // Merge with default structure if AI returns partial
       report = {
         tripId: trip.id,
-        summary: raw.summary || report.summary,
-        highlights: raw.highlights || [],
-        cards: raw.cards || [],
+        summary: report.summary || 'Trip Completed!',
+        highlights: report.highlights || [],
+        cards: report.cards || [],
       };
     } catch (error) {
       console.warn('Report generation fallback used:', (error as Error).message);
@@ -157,8 +141,10 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       'Use warm, inviting colors. Avoid text on the image. Show people enjoying the trip (no faces needed).',
     ].filter(Boolean).join(' ');
 
+    const referencePhoto = trip.photos && trip.photos.length > 0 ? trip.photos[0] : undefined;
+
     try {
-      const imageData = await aiService.generateReportImage(prompt);
+      const imageData = await aiService.generateReportImage(prompt, referencePhoto);
       const updatedReport: TripReport = {
         tripId: trip.id,
         summary: trip.report?.summary || trip.plan.name || 'Trip Report',

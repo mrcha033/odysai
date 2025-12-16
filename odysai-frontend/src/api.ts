@@ -185,4 +185,12 @@ export const api = {
     });
     return res.json();
   },
+
+  async uploadFile(file: File): Promise<{ url: string }> {
+    const res = await fetch(`${API_BASE}/files/upload?filename=${encodeURIComponent(file.name)}`, {
+      method: 'POST',
+      body: file,
+    });
+    return res.json();
+  },
 };
