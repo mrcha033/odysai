@@ -194,6 +194,7 @@ export class AIService {
     const conflictLines = conflicts.slice(0, 3).map(c => `${c.type} (${c.severity}): ${c.description}`).join(' | ');
     const mustHaveLine = mustHaves.length ? `Must-have activities/themes to include: ${mustHaves.join(', ')}` : null;
     const conflictLine = conflicts.length ? `Known conflicts to mediate: ${conflictLines}` : 'Known conflicts: none declared';
+    const candidatesLine = room.candidates?.length ? `Wishlist from users (PRIORITIZE THESE): ${room.candidates.join(', ')}` : null;
 
     return [
       'You are Ody\'sai, a Korean AI travel planner generating group-friendly itineraries.',
@@ -207,7 +208,10 @@ export class AIService {
       `Stamina preference: ${surveySummary.stamina}, Max preferred move: ${surveySummary.maxTravelMinutes} minutes.`,
       conflictLine,
       mustHaveLine || '',
+      candidatesLine || '',
       'Create exactly 3 distinct itinerary packages, varied by vibe (healing, balanced, adventurous, foodie, cultural).',
+      'IMPORTANT: Use Google Search to find REAL, currently operating, and popular places. Do not hallucinate.',
+      'For "food" slots, find specific highly-rated restaurants/cafes in the city suitable for the group size.',
       'Keep daily schedules realistic: chronological times, 3-5 slots per day, durations 60-210 minutes, reasonable meal times.',
       'Prefer avoiding dislikes and honoring constraints. Include at least one visually appealing spot per day if instagram importance is high.',
       'Aim for fairness: ensure each traveler has at least one slot per day matching their emotions/must-haves while avoiding shared constraints.',

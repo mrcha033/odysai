@@ -14,7 +14,21 @@ class KVDataStore {
 
   async getRoom(id: string): Promise<Room | null> {
     const data = await redis.get(`room:${id}`);
-    return data ? JSON.parse(data) : null;
+    if (!data) return null;
+
+    const room = JSON.parse(data);
+    const candidates = await redis.smembers(`room:${id}:candidates`);
+    return { ...room, candidates };
+  }
+
+  async addRoomCandidate(roomId: string, candidate: string): Promise<string[]> {
+    await redis.sadd(`room:${roomId}:candidates`, candidate);
+    return await redis.smembers(`room:${roomId}:candidates`);
+  }
+
+  async removeRoomCandidate(roomId: string, candidate: string): Promise<string[]> {
+    await redis.srem(`room:${roomId}:candidates`, candidate);
+    return await redis.smembers(`room:${roomId}:candidates`);
   }
 
   // Members

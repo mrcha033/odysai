@@ -159,4 +159,30 @@ export const api = {
     const res = await fetch(`${API_BASE}/trips/${tripId}`);
     return res.json();
   },
+
+  async addCandidate(roomId: string, candidate: string): Promise<{ candidates: string[] }> {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/candidates`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ candidate }),
+    });
+    return res.json();
+  },
+
+  async removeCandidate(roomId: string, candidate: string): Promise<{ candidates: string[] }> {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/candidates`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ candidate }),
+    });
+    return res.json();
+  },
+
+  async discoverPlaces(roomId: string): Promise<{ results: any[] }> {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/discover`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return res.json();
+  },
 };

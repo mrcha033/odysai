@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, Check, User, MapPin, Calendar, ArrowRight, Sparkles, Rocket } from 'lucide-react';
+import { ArrowRight, Users, User, Calendar, MapPin, Copy, Check, Info, Loader2, Sparkles, AlertTriangle, Rocket, Heart, X, Globe } from 'lucide-react';
 import { api } from '../api';
 import { RoomStatus, Member } from '../types';
 
@@ -14,6 +14,14 @@ export default function RoomLobby() {
   const [currentMember, setCurrentMember] = useState<Member | null>(null);
   const [showCopyToast, setShowCopyToast] = useState(false);
   const [isAutoStarting, setIsAutoStarting] = useState(false);
+
+  // Wishlist State
+  const [candidateInput, setCandidateInput] = useState('');
+  const [isAddingCandidate, setIsAddingCandidate] = useState(false);
+
+  // Discover State
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isDiscovering, setIsDiscovering] = useState(false);
 
   useEffect(() => {
     // Smart Default: Pre-fill nickname
@@ -49,7 +57,7 @@ export default function RoomLobby() {
     setStatus(data);
 
     if (data.trip && !isAutoStarting) {
-      navigate(`/trip/${data.trip.id}`);
+      navigate(`/ trip / ${data.trip.id} `);
     }
   };
 
@@ -70,7 +78,7 @@ export default function RoomLobby() {
         // but we can also manually push if api returns tripId instantly.
         const updatedStatus = await api.getRoomStatus(roomId);
         if (updatedStatus.trip) {
-          navigate(`/trip/${updatedStatus.trip.id}`);
+          navigate(`/ trip / ${updatedStatus.trip.id} `);
         }
       } else {
         console.error("No winner plan found despite everyone being ready.");
@@ -97,11 +105,71 @@ export default function RoomLobby() {
   };
 
   const handleStartSurvey = () => {
-    navigate(`/room/${roomId}/survey/${currentMember?.id}`);
+    navigate(`/ room / ${roomId} /survey/${currentMember?.id} `);
   };
 
   const handleViewPlans = () => {
-    navigate(`/room/${roomId}/plans`);
+    navigate(`/ room / ${roomId}/plans`);
+  };
+
+  const handleDiscover = async () => {
+    if (!roomId) return;
+    setIsDiscovering(true);
+    setSearchResults([]);
+    try {
+      const { results } = await api.discoverPlaces(roomId);
+      setSearchResults(results || []);
+    } catch (e) {
+      console.error('Discover failed', e);
+    } finally {
+      setIsDiscovering(false);
+    }
+  };
+
+  const handleAddCandidateWithTitle = async (title: string) => {
+    if (!roomId) return;
+    try {
+      const { candidates } = await api.addCandidate(roomId, title);
+      console.log('Added candidate:', title);
+      const updatedStatus = await api.getRoomStatus(roomId);
+      setStatus(updatedStatus);
+    } catch (e) {
+      console.error('Failed to add candidate', e);
+    }
+  };
+
+  const handleAddCandidate = async () => {
+    if (!roomId || !candidateInput.trim()) return;
+    setIsAddingCandidate(true);
+    try {
+      const { candidates } = await api.addCandidate(roomId, candidateInput);
+      if (status) {
+        setStatus({
+          ...status,
+          room: { ...status.room, candidates }
+        });
+      }
+      setCandidateInput('');
+    } catch (e) {
+      console.error('Failed to add candidate', e);
+    } finally {
+      setIsAddingCandidate(false);
+    }
+  };
+
+  const handleRemoveCandidate = async (candidate: string) => {
+    if (!roomId) return;
+    try {
+      const { candidates } = await api.removeCandidate(roomId, candidate);
+      if (status) {
+        setStatus({
+          ...status,
+          room: { ...status.room, candidates }
+        });
+      }
+    } catch (e) {
+      console.error('Failed to remove candidate', e);
+    }
   };
 
   const handleGeneratePlans = async () => {
@@ -338,7 +406,111 @@ export default function RoomLobby() {
                   animate={{ opacity: 1, y: 0 }}
                   className="bg-slate-50 border border-slate-100 rounded-2xl p-6 text-center"
                 >
-                  <div className="flex justify-center mb-2">
+                  {/* Discover Section */}
+                  <div className="card p-6 space-y-4">
+                    <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                      <Globe size={20} className="text-blue-500" />
+                      Discover Trending Places <span className="text-sm font-normal text-slate-500">(Real-time web search)</span>
+                    </h3>
+
+                    {!searchResults.length ? (
+                      <div className="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        <p className="text-slate-600 mb-4">Not sure where to go? Search the web for top rated spots!</p>
+                        <button
+                          onClick={handleDiscover}
+                          disabled={isDiscovering}
+                          className="btn bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30"
+                        >
+                          {isDiscovering ? (
+                            <>
+                              <Loader2 className="animate-spin" size={18} />
+                              Searching Web...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles size={18} />
+                              Search Top Places
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-slate-500">Found {searchResults.length} results</span>
+                          <button onClick={() => setSearchResults([])} className="text-xs text-slate-400 hover:text-slate-600">Clear</button>
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-3">
+                          {searchResults.map((result, idx) => (
+                            <div key={idx} className="p-3 bg-white border border-slate-200 rounded-lg hover:border-blue-300 transition-colors group">
+                              <div className="flex justify-between items-start mb-1">
+                                <a href={result.link} target="_blank" rel="noreferrer" className="font-semibold text-slate-800 hover:underline flex-1 truncate pr-2">
+                                  {result.title}
+                                </a>
+                                <button
+                                  onClick={() => {
+                                    setCandidateInput(result.title);
+                                    handleAddCandidateWithTitle(result.title);
+                                  }}
+                                  className="text-blue-600 bg-blue-50 hover:bg-blue-100 p-1.5 rounded-md transition-colors text-xs font-bold"
+                                >
+                                  + Add
+                                </button>
+                              </div>
+                              <p className="text-xs text-slate-500 line-clamp-2">{result.snippet}</p>
+                              {result.rating && <div className="mt-2 text-xs font-medium text-amber-500">★ {result.rating}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Shared Wishlist Section */}
+                  <div className="card p-6 space-y-4">
+                    <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                      <Heart size={20} className="text-pink-500" />
+                      Shared Wishlist <span className="text-sm font-normal text-slate-500">(Places you want to visit)</span>
+                    </h3>
+
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={candidateInput}
+                        onChange={(e) => setCandidateInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddCandidate()}
+                        placeholder="e.g. Eiffel Tower, Grandma's Cookie Shop"
+                        className="input flex-1"
+                      />
+                      <button
+                        onClick={handleAddCandidate}
+                        disabled={isAddingCandidate || !candidateInput.trim()}
+                        className="btn btn-secondary whitespace-nowrap"
+                      >
+                        {isAddingCandidate ? 'Adding...' : 'Add Place'}
+                      </button>
+                    </div>
+
+                    {status.room.candidates && status.room.candidates.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        {status.room.candidates.map((candidate, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-pink-50 text-pink-700 rounded-full text-sm font-medium border border-pink-100">
+                            {candidate}
+                            <button
+                              onClick={() => handleRemoveCandidate(candidate)}
+                              className="hover:bg-pink-100 rounded-full p-0.5 transition-colors"
+                            >
+                              <X size={14} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-slate-400 text-sm italic">No specific places requested yet. Add some to guide the AI!</p>
+                    )}
+                  </div>
+
+                  <div className="flex justify-center pt-8">
                     <div className="p-3 bg-white rounded-full shadow-sm">
                       <User className="text-slate-400" />
                     </div>

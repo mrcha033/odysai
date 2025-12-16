@@ -5,6 +5,7 @@ export interface Room {
   theme: string[];
   travelerCount: number;
   createdAt: string;
+  candidates?: string[];
 }
 
 export interface Member {
