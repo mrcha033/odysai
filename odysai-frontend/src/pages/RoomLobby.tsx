@@ -57,7 +57,7 @@ export default function RoomLobby() {
     setStatus(data);
 
     if (data.trip && !isAutoStarting) {
-      navigate(`/ trip / ${data.trip.id} `);
+      navigate(`/trip/${data.trip.id}`);
     }
   };
 
@@ -78,7 +78,7 @@ export default function RoomLobby() {
         // but we can also manually push if api returns tripId instantly.
         const updatedStatus = await api.getRoomStatus(roomId);
         if (updatedStatus.trip) {
-          navigate(`/ trip / ${updatedStatus.trip.id} `);
+          navigate(`/trip/${updatedStatus.trip.id}`);
         }
       } else {
         console.error("No winner plan found despite everyone being ready.");
@@ -105,11 +105,11 @@ export default function RoomLobby() {
   };
 
   const handleStartSurvey = () => {
-    navigate(`/ room / ${roomId} /survey/${currentMember?.id} `);
+    navigate(`/room/${roomId}/survey/${currentMember?.id}`);
   };
 
   const handleViewPlans = () => {
-    navigate(`/ room / ${roomId}/plans`);
+    navigate(`/room/${roomId}/plans`);
   };
 
   const handleDiscover = async () => {
