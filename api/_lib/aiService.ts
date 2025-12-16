@@ -367,21 +367,38 @@ export class AIService {
     ].join('\n');
   }
 
-  // --- Gemini helpers -----------------------------------------------------
-
   public async generateStructuredJSON<T>(prompt: string, schema: any): Promise<T> {
-    // Try primary model, then fallback model if configured differently
     try {
-      return await this.generateWithModel<T>(prompt, schema, this.model);
+      return await this.generateWithRetry<T>(prompt, schema, this.model);
     } catch (error) {
-      const message = (error as Error).message || '';
-      const shouldFallback = this.fallbackModel && this.fallbackModel !== this.model;
-      if (shouldFallback) {
-        console.warn(`[ai] Primary model failed (${this.model}), retrying with fallback ${this.fallbackModel}: ${message}`);
-        return await this.generateWithModel<T>(prompt, schema, this.fallbackModel);
+      console.warn(`[ai] Primary model failed (${this.model}), trying fallback (${this.fallbackModel}). Error: ${(error as Error).message}`);
+      if (this.fallbackModel && this.fallbackModel !== this.model) {
+        return await this.generateWithRetry<T>(prompt, schema, this.fallbackModel);
       }
       throw error;
     }
+  }
+
+  private async generateWithRetry<T>(prompt: string, schema: any, modelName: string, retries = 3, initialDelay = 2000): Promise<T> {
+    let currentDelay = initialDelay;
+
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await this.generateWithModel<T>(prompt, schema, modelName);
+      } catch (error: any) {
+        const isQuotaError = error.message?.includes('429') || error.message?.includes('Quota') || error.status === 429;
+        const isOverloaded = error.message?.includes('503') || error.status === 503;
+
+        if ((isQuotaError || isOverloaded) && i < retries - 1) {
+          console.warn(`[ai] Model ${modelName} hit rate limit/overload. Retrying in ${currentDelay}ms... (Attempt ${i + 1}/${retries})`);
+          await new Promise(resolve => setTimeout(resolve, currentDelay));
+          currentDelay *= 2; // Exponential backoff
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error(`Failed to generate with ${modelName} after ${retries} retries`);
   }
 
   private async generateWithModel<T>(prompt: string, schema: any, modelName: string): Promise<T> {
@@ -399,7 +416,7 @@ export class AIService {
         { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
       ],
       generationConfig: {
-        temperature: 0.6,
+        temperature: 0.7,
         responseMimeType: 'application/json',
         responseSchema: schema,
       },

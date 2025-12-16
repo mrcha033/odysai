@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, RefreshCw, X, AlertCircle, Calendar, ArrowRight, Map, CheckCircle2, Circle, Upload } from 'lucide-react';
 import { api } from '../api';
@@ -7,6 +7,7 @@ import { Trip, ActivitySlot } from '../types';
 
 export default function TripLobby() {
   const { tripId } = useParams<{ tripId: string }>();
+  const navigate = useNavigate();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [showReplaceModal, setShowReplaceModal] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ slot: ActivitySlot; day: number } | null>(null);
@@ -25,11 +26,13 @@ export default function TripLobby() {
   const [city, setCity] = useState('');
 
   useEffect(() => {
-    const storedRoomId = localStorage.getItem('roomId');
-    if (storedRoomId) {
-      loadTripDataByRoom(storedRoomId);
-    } else if (tripId) {
+    if (tripId) {
       loadTripDataByTrip(tripId);
+    } else {
+      const storedRoomId = localStorage.getItem('roomId');
+      if (storedRoomId) {
+        loadTripDataByRoom(storedRoomId);
+      }
     }
 
     // Update time every minute
@@ -52,7 +55,7 @@ export default function TripLobby() {
       if (status.room) {
         setCity(status.room.city);
       }
-      if (status.trip) {
+      if (status.trip && !trip) {
         setTrip(status.trip);
         if (status.trip.photos) setPhotos(status.trip.photos);
         localStorage.setItem('roomId', status.trip.roomId);
@@ -82,23 +85,28 @@ export default function TripLobby() {
     }
   };
 
-  const handleReplaceSpot = async (slot: ActivitySlot, day: number) => {
+  const handleReplaceSpot = (slot: ActivitySlot, day: number) => {
     setSelectedSlot({ slot, day });
     setShowReplaceModal(true);
-    setIsLoadingAlternatives(true);
     setAlternatives([]);
-
-    if (!tripId) return;
-
-    try {
-      const alts = await api.replaceSpot(tripId, slot.id, replaceReason, day);
-      setAlternatives(alts);
-    } catch (error) {
-      console.error('Failed to get alternatives:', error);
-    } finally {
-      setIsLoadingAlternatives(false);
-    }
   };
+
+  useEffect(() => {
+    if (showReplaceModal && selectedSlot && tripId) {
+      const fetchAlternatives = async () => {
+        setIsLoadingAlternatives(true);
+        try {
+          const alts = await api.replaceSpot(tripId, selectedSlot.slot.id, replaceReason, selectedSlot.day);
+          setAlternatives(alts);
+        } catch (error) {
+          console.error('Failed to get alternatives:', error);
+        } finally {
+          setIsLoadingAlternatives(false);
+        }
+      };
+      fetchAlternatives();
+    }
+  }, [showReplaceModal, replaceReason, selectedSlot, tripId]);
 
   const handleSelectAlternative = (alt: ActivitySlot) => {
     if (!trip || !selectedSlot) return;
@@ -451,7 +459,7 @@ export default function TripLobby() {
                     photos: [...photos, ...parseList(photoUrlsInput)], // Use the actual photos array state
                     feedback: feedbackInput,
                   });
-                  window.location.href = `/trip/${trip.id}/report`;
+                  navigate(`/trip/${trip.id}/report`);
                 }
               }}
               className="btn btn-primary px-8 py-3 text-lg shadow-lg shadow-primary-500/30 hover:shadow-primary-500/50 transform hover:-translate-y-1 transition-all"

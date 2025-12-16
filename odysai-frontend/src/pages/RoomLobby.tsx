@@ -400,137 +400,140 @@ export default function RoomLobby() {
                     Generate AI Plans
                   </button>
                 </motion.div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-slate-50 border border-slate-100 rounded-2xl p-6 text-center"
-                >
-                  {/* Discover Section */}
-                  <div className="card p-6 space-y-4">
-                    <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                      <Globe size={20} className="text-blue-500" />
-                      Discover Trending Places <span className="text-sm font-normal text-slate-500">(Real-time web search)</span>
-                    </h3>
+              ) : null
+            )}
 
-                    {!searchResults.length ? (
-                      <div className="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                        <p className="text-slate-600 mb-4">Not sure where to go? Search the web for top rated spots!</p>
-                        <button
-                          onClick={handleDiscover}
-                          disabled={isDiscovering}
-                          className="btn bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30"
-                        >
-                          {isDiscovering ? (
-                            <>
-                              <Loader2 className="animate-spin" size={18} />
-                              Searching Web...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles size={18} />
-                              Search Top Places
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-slate-500">Found {searchResults.length} results</span>
-                          <button onClick={() => setSearchResults([])} className="text-xs text-slate-400 hover:text-slate-600">Clear</button>
-                        </div>
-                        <div className="grid md:grid-cols-2 gap-3">
-                          {searchResults.map((result, idx) => (
-                            <div key={idx} className="p-3 bg-white border border-slate-200 rounded-lg hover:border-blue-300 transition-colors group">
-                              <div className="flex justify-between items-start mb-1">
-                                <a href={result.link} target="_blank" rel="noreferrer" className="font-semibold text-slate-800 hover:underline flex-1 truncate pr-2">
-                                  {result.title}
-                                </a>
-                                <button
-                                  onClick={() => {
-                                    setCandidateInput(result.title);
-                                    handleAddCandidateWithTitle(result.title);
-                                  }}
-                                  className="text-blue-600 bg-blue-50 hover:bg-blue-100 p-1.5 rounded-md transition-colors text-xs font-bold"
-                                >
-                                  + Add
-                                </button>
-                              </div>
-                              <p className="text-xs text-slate-500 line-clamp-2">{result.snippet}</p>
-                              {result.rating && <div className="mt-2 text-xs font-medium text-amber-500">★ {result.rating}</div>}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+            {/* Discover and Wishlist Section - Visible to everyone while waiting for plans */}
+            {!hasPlans && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-slate-50 border border-slate-100 rounded-2xl p-6 text-center mt-6"
+              >
+                {/* Discover Section */}
+                <div className="card p-6 space-y-4">
+                  <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <Globe size={20} className="text-blue-500" />
+                    Discover Trending Places <span className="text-sm font-normal text-slate-500">(Real-time web search)</span>
+                  </h3>
 
-                  {/* Shared Wishlist Section */}
-                  <div className="card p-6 space-y-4">
-                    <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                      <Heart size={20} className="text-pink-500" />
-                      Shared Wishlist <span className="text-sm font-normal text-slate-500">(Places you want to visit)</span>
-                    </h3>
-
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={candidateInput}
-                        onChange={(e) => setCandidateInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddCandidate()}
-                        placeholder="e.g. Eiffel Tower, Grandma's Cookie Shop"
-                        className="input flex-1"
-                      />
+                  {!searchResults.length ? (
+                    <div className="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                      <p className="text-slate-600 mb-4">Not sure where to go? Search the web for top rated spots!</p>
                       <button
-                        onClick={handleAddCandidate}
-                        disabled={isAddingCandidate || !candidateInput.trim()}
-                        className="btn btn-secondary whitespace-nowrap"
+                        onClick={handleDiscover}
+                        disabled={isDiscovering}
+                        className="btn bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30"
                       >
-                        {isAddingCandidate ? 'Adding...' : 'Add Place'}
+                        {isDiscovering ? (
+                          <>
+                            <Loader2 className="animate-spin" size={18} />
+                            Searching Web...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={18} />
+                            Search Top Places
+                          </>
+                        )}
                       </button>
                     </div>
-
-                    {status.room.candidates && status.room.candidates.length > 0 ? (
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        {status.room.candidates.map((candidate, idx) => (
-                          <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-pink-50 text-pink-700 rounded-full text-sm font-medium border border-pink-100">
-                            {candidate}
-                            <button
-                              onClick={() => handleRemoveCandidate(candidate)}
-                              className="hover:bg-pink-100 rounded-full p-0.5 transition-colors"
-                            >
-                              <X size={14} />
-                            </button>
-                          </span>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-slate-500">Found {searchResults.length} results</span>
+                        <button onClick={() => setSearchResults([])} className="text-xs text-slate-400 hover:text-slate-600">Clear</button>
+                      </div>
+                      <div className="grid md:grid-cols-2 gap-3">
+                        {searchResults.map((result, idx) => (
+                          <div key={idx} className="p-3 bg-white border border-slate-200 rounded-lg hover:border-blue-300 transition-colors group">
+                            <div className="flex justify-between items-start mb-1">
+                              <a href={result.link} target="_blank" rel="noreferrer" className="font-semibold text-slate-800 hover:underline flex-1 truncate pr-2">
+                                {result.title}
+                              </a>
+                              <button
+                                onClick={() => {
+                                  setCandidateInput(result.title);
+                                  handleAddCandidateWithTitle(result.title);
+                                }}
+                                className="text-blue-600 bg-blue-50 hover:bg-blue-100 p-1.5 rounded-md transition-colors text-xs font-bold"
+                              >
+                                + Add
+                              </button>
+                            </div>
+                            <p className="text-xs text-slate-500 line-clamp-2">{result.snippet}</p>
+                            {result.rating && <div className="mt-2 text-xs font-medium text-amber-500">★ {result.rating}</div>}
+                          </div>
                         ))}
                       </div>
-                    ) : (
-                      <p className="text-slate-400 text-sm italic">No specific places requested yet. Add some to guide the AI!</p>
-                    )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Shared Wishlist Section */}
+                <div className="card p-6 space-y-4">
+                  <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <Heart size={20} className="text-pink-500" />
+                    Shared Wishlist <span className="text-sm font-normal text-slate-500">(Places you want to visit)</span>
+                  </h3>
+
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={candidateInput}
+                      onChange={(e) => setCandidateInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddCandidate()}
+                      placeholder="e.g. Eiffel Tower, Grandma's Cookie Shop"
+                      className="input flex-1"
+                    />
+                    <button
+                      onClick={handleAddCandidate}
+                      disabled={isAddingCandidate || !candidateInput.trim()}
+                      className="btn btn-secondary whitespace-nowrap"
+                    >
+                      {isAddingCandidate ? 'Adding...' : 'Add Place'}
+                    </button>
                   </div>
 
-                  <div className="flex justify-center pt-8">
-                    <div className="p-3 bg-white rounded-full shadow-sm">
-                      <User className="text-slate-400" />
+                  {status.room.candidates && status.room.candidates.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {status.room.candidates.map((candidate, idx) => (
+                        <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-pink-50 text-pink-700 rounded-full text-sm font-medium border border-pink-100">
+                          {candidate}
+                          <button
+                            onClick={() => handleRemoveCandidate(candidate)}
+                            className="hover:bg-pink-100 rounded-full p-0.5 transition-colors"
+                          >
+                            <X size={14} />
+                          </button>
+                        </span>
+                      ))}
                     </div>
+                  ) : (
+                    <p className="text-slate-400 text-sm italic">No specific places requested yet. Add some to guide the AI!</p>
+                  )}
+                </div>
+
+                <div className="flex justify-center pt-8">
+                  <div className="p-3 bg-white rounded-full shadow-sm">
+                    <User className="text-slate-400" />
                   </div>
-                  <h4 className="text-lg font-semibold text-slate-700">Waiting for other travelers...</h4>
-                  <p className="text-slate-500 mb-2">
-                    {status.members.length < status.room.travelerCount
-                      ? `Waiting for ${status.room.travelerCount - status.members.length} more person(s) to join.`
-                      : 'Waiting for everyone to complete the survey.'}
-                  </p>
-                  <div className="w-full bg-slate-200 rounded-full h-2 max-w-xs mx-auto overflow-hidden">
-                    <div
-                      className="bg-primary-500 h-full transition-all duration-500"
-                      style={{
-                        width: `${(status.members.filter(m => m.surveyCompleted).length / status.room.travelerCount) * 100}%`
-                      }}
-                    />
-                  </div>
-                </motion.div>
-              )
+                </div>
+                <h4 className="text-lg font-semibold text-slate-700">Waiting for other travelers...</h4>
+                <p className="text-slate-500 mb-2">
+                  {status.members.length < status.room.travelerCount
+                    ? `Waiting for ${status.room.travelerCount - status.members.length} more person(s) to join.`
+                    : 'Waiting for everyone to complete the survey.'}
+                </p>
+                <div className="w-full bg-slate-200 rounded-full h-2 max-w-xs mx-auto overflow-hidden">
+                  <div
+                    className="bg-primary-500 h-full transition-all duration-500"
+                    style={{
+                      width: `${(status.members.filter(m => m.surveyCompleted).length / status.room.travelerCount) * 100}%`
+                    }}
+                  />
+                </div>
+              </motion.div>
             )}
 
             {hasPlans && (
