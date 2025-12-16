@@ -243,9 +243,6 @@ export class AIService {
     const genAI = new GoogleGenerativeAI(this.apiKey);
     const model = genAI.getGenerativeModel({
       model: this.imageModel,
-      generationConfig: {
-        responseMimeType: 'image/png',
-      },
     });
 
     const parts: any[] = [{ text: prompt }];

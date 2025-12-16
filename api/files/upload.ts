@@ -2,6 +2,12 @@ import { put } from '@vercel/blob';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { withCors } from '../_lib/handler';
 
+export const config = {
+    api: {
+        bodyParser: false,
+    },
+};
+
 async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -10,7 +16,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     const filename = req.query.filename as string || 'image.jpg';
 
     try {
-        const blob = await put(filename, req.body, {
+        const blob = await put(filename, req, {
             access: 'public',
             token: process.env.BLOB_READ_WRITE_TOKEN,
         });
