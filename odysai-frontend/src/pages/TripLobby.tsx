@@ -20,6 +20,7 @@ export default function TripLobby() {
   const [feedbackInput, setFeedbackInput] = useState('');
   const [photoAddInput, setPhotoAddInput] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
   const [completedSlots, setCompletedSlots] = useState<string[]>([]);
   const [now, setNow] = useState(new Date());
@@ -158,13 +159,16 @@ export default function TripLobby() {
       .filter(Boolean);
 
   const handleAddPhoto = async () => {
-    if (!trip || !photoAddInput.trim()) return;
+    if (!trip || !photoAddInput.trim() || isUploading) return;
+    setIsUploading(true);
     try {
       const res = await api.addTripPhoto(trip.id, photoAddInput.trim());
       setPhotos(res.photos || []);
       setPhotoAddInput('');
     } catch (error) {
       console.error('Failed to add photo:', error);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -452,19 +456,33 @@ export default function TripLobby() {
           <div className="flex justify-end">
             <button
               onClick={async () => {
-                if (!trip) return;
+                if (!trip || isCompleting) return;
                 if (window.confirm('Complete the trip and generate the report?')) {
-                  await api.completeTrip(trip.id, {
-                    dayEmotions: parseList(dayEmotionsInput),
-                    photos: [...photos, ...parseList(photoUrlsInput)], // Use the actual photos array state
-                    feedback: feedbackInput,
-                  });
-                  navigate(`/trip/${trip.id}/report`);
+                  setIsCompleting(true);
+                  try {
+                    await api.completeTrip(trip.id, {
+                      dayEmotions: parseList(dayEmotionsInput),
+                      photos: [...photos, ...parseList(photoUrlsInput)], // Use the actual photos array state
+                      feedback: feedbackInput,
+                    });
+                    navigate(`/trip/${trip.id}/report`);
+                  } catch (e) {
+                    console.error("Failed to complete trip", e);
+                    setIsCompleting(false);
+                  }
                 }
               }}
-              className="btn btn-primary px-8 py-3 text-lg shadow-lg shadow-primary-500/30 hover:shadow-primary-500/50 transform hover:-translate-y-1 transition-all"
+              disabled={isCompleting}
+              className={`btn btn-primary px-8 py-3 text-lg shadow-lg shadow-primary-500/30 transform transition-all ${isCompleting ? 'opacity-80 cursor-not-allowed' : 'hover:shadow-primary-500/50 hover:-translate-y-1'}`}
             >
-              Complete Trip 🎉
+              {isCompleting ? (
+                <span className="flex items-center gap-2">
+                  <RefreshCw className="animate-spin" size={20} />
+                  Generating Report...
+                </span>
+              ) : (
+                'Complete Trip 🎉'
+              )}
             </button>
           </div>
         </div>

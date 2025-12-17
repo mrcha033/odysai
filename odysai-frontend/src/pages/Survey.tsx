@@ -19,6 +19,7 @@ export default function Survey() {
   const [staminaLevel, setStaminaLevel] = useState<'low' | 'medium' | 'high'>('medium');
   const [maxTravelMinutes, setMaxTravelMinutes] = useState(40);
   const [mustHavesInput, setMustHavesInput] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const emotionOptions = ['Healing', 'Excitement', 'Adventure', 'Relaxation', 'Culture', 'Foodie'];
   const dislikeOptions = ['Crowds', 'Long Walks', 'Spicy Food', 'Loud Places', 'Early Mornings'];
@@ -35,6 +36,7 @@ export default function Survey() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     const survey: SurveyType = {
       emotions,
@@ -51,8 +53,14 @@ export default function Survey() {
 
     if (!memberId || !roomId) return;
 
-    await api.submitSurvey(roomId, memberId, survey);
-    navigate(`/room/${roomId}`);
+    setIsSubmitting(true);
+    try {
+      await api.submitSurvey(roomId, memberId, survey);
+      navigate(`/room/${roomId}`);
+    } catch (error) {
+      console.error('Failed to submit survey:', error);
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -259,8 +267,12 @@ export default function Survey() {
           </div>
         </div>
 
-        <button type="submit" className="btn btn-primary w-full py-4 text-lg shadow-xl shadow-primary-500/20">
-          Submit Preferences
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className={`btn btn-primary w-full py-4 text-lg shadow-xl shadow-primary-500/20 transition-all ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+        >
+          {isSubmitting ? 'Submitting...' : 'Submit Preferences'}
         </button>
       </form>
     </motion.div>

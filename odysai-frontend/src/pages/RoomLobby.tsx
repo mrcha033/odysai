@@ -23,6 +23,8 @@ export default function RoomLobby() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isDiscovering, setIsDiscovering] = useState(false);
 
+  const [isGenerating, setIsGenerating] = useState(false);
+
   useEffect(() => {
     // Smart Default: Pre-fill nickname
     const saved = localStorage.getItem('userNickname');
@@ -173,9 +175,16 @@ export default function RoomLobby() {
   };
 
   const handleGeneratePlans = async () => {
-    if (!roomId) return;
-    await api.generatePlans(roomId);
-    loadRoomStatus();
+    if (!roomId || isGenerating) return;
+    setIsGenerating(true);
+    try {
+      await api.generatePlans(roomId);
+      loadRoomStatus();
+    } catch (e) {
+      console.error("Failed to generate plans", e);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleToggleReady = async () => {
@@ -396,8 +405,19 @@ export default function RoomLobby() {
                     </h4>
                     <p className="text-green-700">Everyone has completed the survey.</p>
                   </div>
-                  <button onClick={handleGeneratePlans} className="btn bg-green-600 text-white hover:bg-green-700 shadow-lg shadow-green-200">
-                    Generate AI Plans
+                  <button
+                    onClick={handleGeneratePlans}
+                    disabled={isGenerating}
+                    className="btn bg-green-600 text-white hover:bg-green-700 shadow-lg shadow-green-200 disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {isGenerating ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="animate-spin" size={18} />
+                        Generating Plans...
+                      </span>
+                    ) : (
+                      'Generate AI Plans'
+                    )}
                   </button>
                 </motion.div>
               ) : null
